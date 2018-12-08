@@ -4,7 +4,20 @@ from vtk.util.numpy_support import vtk_to_numpy # calling vtk_to_numpy doesn't w
 class Mesh:
     #params: self, and a VTK Object called vtk_mesh
     def __init__(self, vtk_mesh):
-        self.polydata = vtk_mesh
+        center = vtk_mesh.vtkCenterOfMass()
+        center.SetInputData(vtk_mesh.GetPolyData())
+        center.SetUseScalarAsWeights(False)
+        center.Update()
+        self.centerpoint = center.GetCenter()
+
+        transform = vtk_mesh.vtkTransform()
+        transform.translate(-center[0], -center[1], -center[2])
+        transformt = vtk_mesh.vtkTransformPolyDataFilter()
+        transformt.SetInputData(vtk_mesh.GetPolyData())
+        transformt.SetTransform(transform)
+        transformt.Update()
+
+        self.polydata = transformt.GetOutput()
 
     ''' we don't have to use getters like this, but using it in this case bc 1) 
     attributes are now pointers and don't have to be updated, 2) can't be 

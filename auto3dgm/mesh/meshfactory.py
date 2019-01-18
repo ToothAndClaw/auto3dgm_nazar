@@ -33,7 +33,7 @@ class MeshFactory(object):
             elif splitext(file_path)[1] == '.obj':
                 reader = vtkOBJReader()
 
-            elif splitext(file_path)[1] == '.ply':
+            elif splitext(file_path)[1] == '.stl':
                 reader = vtkSTLReader()
 
             reader.SetFileName(file_path)

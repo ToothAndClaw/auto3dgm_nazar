@@ -1,4 +1,4 @@
-
+from meshfactory import MeshFactory
 print("Begin Test")
 
 factory = meshfactory.MeshFactory()

@@ -1,6 +1,7 @@
 import numpy as np
 from vtk.util.numpy_support import vtk_to_numpy # calling vtk_to_numpy doesn't work
 import vtk
+import math
 #import vtkCenterOfMass
 
 class Mesh:
@@ -67,3 +68,47 @@ class Mesh:
     @property
     def scale(self):
         return np.linalg.norm(vtk_to_numpy(self.polydata.GetPoints().GetData()), 'fro')
+
+    @property
+    def rotate(self, arr):
+        temp = isValidRotation(arr)
+        assert(temp == True)
+        sy = math.sqrt(arr[0, 0] * arr[0, 0] + arr[1, 0] * arr[1, 0])
+        singular = sy < 1e-6
+        x, y, z = 0, 0, 0
+        if not singular :
+            x = math.atan2(arr[2, 1], arr[2, 2])
+            y = math.atan2(-arr[2, 0], sy)
+            z = math.atan2(arr[1, 0], arr[0, 0])
+
+        else :
+            x = math.atan2(-arr[1, 2], arr[1, 1])
+            y = math.atan2(-arr[2, 0], sy)
+            z = 0
+
+        rpy = np.array([x, y, z])
+
+        transform = vtk.vtkTransform()
+        transform.RotateX(x)
+        transform.RotateY(y)
+        transform.RotateZ(z)
+
+        transformt = vtk.vtkTransformPolyDataFilter()
+        transformt.SetInputData(self.polydata)
+        transformt.SetTransform(transform)
+        transformt.Update()
+
+        self.polydata = transformt.GetOutput()
+        
+        return self.polydata
+
+
+    
+def isValidRotation(arr):
+    rt = np.transpose(arr)
+    identity = np.dot(rt, arr)
+    I = np.identity(3, dtype = arr.dtype)
+    n = np.linalg.norm(I - identity)
+    return n < 1e-6
+
+    

@@ -38,7 +38,7 @@ class MeshFactory(object):
 
             reader.SetFileName(file_path)
             reader.Update()
-
+            
             polydata = reader.GetOutput()
             if isinstance(polydata, vtkPolyData):
                 return Mesh(polydata)
@@ -50,3 +50,4 @@ class MeshFactory(object):
             msg = 'File {} not present or not allowed filetype: {}'.format(
                 file_path, ', '.join(allowed_filetypes))
             raise OSError(msg)
+

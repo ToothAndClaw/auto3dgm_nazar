@@ -26,12 +26,10 @@ class Correspondence:
             else:
                  self.reference_index=reference_index
     @staticmethod
-<<<<<<< HEAD
     def find_mst(distance_matrix):
         X = csr_matrix([t for t in distance_matrix])
         output = minimum_spanning_tree(X)
         return output.toarray()
-=======
     #An auxiliary method for computing the initial pairwise-alignment
     #Computes the principal components of two meshes and all possible rotations of the 3-axes)
     #params: mesh1, mesh2 meshes that have vertices that are 3 x n matrices
@@ -88,9 +86,3 @@ class Correspondence:
             Rotations.append(self.best_pairwise_PCA_alignment(mesh1,i,self))
         return(Rotations)
         
-def find_mst(distance_matrix):
-    X = csr_matrix([t for t in distance_matrix])
-    output = minimum_spanning_tree(X)
-    return output.toarray()
->>>>>>> 6e68c652070ec840fa10b5cce567973e96397064
-

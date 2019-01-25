@@ -1,3 +1,9 @@
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import minimum_spanning_tree
+
+
+
+
 class Correspondence:
     #params: self,
     #meshes: either a mesh object or a list or a dictionary of mesh objects
@@ -18,5 +24,9 @@ class Correspondence:
                 raise OSError(msg)
             else:
                  self.reference_index=reference_index
-
+    
+    def find_mst(self, distance_matrix):
+        X = csr_matrix([t for t in distance_matrix])
+        output = minimum_spanning_tree(X)
+        return output.toaray()
 

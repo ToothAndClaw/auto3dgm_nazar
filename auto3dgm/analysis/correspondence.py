@@ -25,8 +25,8 @@ class Correspondence:
             else:
                  self.reference_index=reference_index
     
-    def find_mst(self, distance_matrix):
-        X = csr_matrix([t for t in distance_matrix])
-        output = minimum_spanning_tree(X)
-        return output.toaray()
+def find_mst(distance_matrix):
+    X = csr_matrix([t for t in distance_matrix])
+    output = minimum_spanning_tree(X)
+    return output.toarray()
 

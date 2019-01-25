@@ -1,5 +1,0 @@
-from meshfactory import MeshFactory 
-from mesh import Mesh
-import vtk
-
-print "hello world"

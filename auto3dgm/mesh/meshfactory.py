@@ -1,7 +1,7 @@
 from os.path import isfile, splitext
 
-from mesh.mesh import Mesh
-from vtk import vtkPLYReader,vtkOBJReader,vtkSTLReader,vtkPolyData
+from auto3dgm.mesh.mesh import Mesh
+from vtk import vtkPLYReader, vtkPolyData
 from warnings import warn
 
 

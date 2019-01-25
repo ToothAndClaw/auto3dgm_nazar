@@ -1,9 +1,13 @@
 class Dataset:
     #params: self,
-    #meshes: either a mesh object or a list of mesh objects
-    #analyses: either an analysis object or a list of analysis objects
+    #meshes: either a mesh object or a list or a dictionary of mesh objects
+    #analyses: an analysis object (list, dictionary of such) associated with the mesh objects
     def __init__(self, meshes, analyses={}):
-        if isinstance(meshes, (list,)):
+        if isinstance(meshes,dict):
+            mesh_set=meshes
+            if isinstance(analyses,dict):
+                analysis_set=analyses
+        elif isinstance(meshes, (list,)):
             ID=0
             self.mesh_set={}
             self.analysis_set={}

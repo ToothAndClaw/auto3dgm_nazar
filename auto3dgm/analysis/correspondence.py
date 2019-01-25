@@ -1,3 +1,5 @@
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy import linalg
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance_matrix
@@ -23,8 +25,11 @@ class Correspondence:
                 raise OSError(msg)
             else:
                  self.reference_index=reference_index
-
     @staticmethod
+    def find_mst(distance_matrix):
+        X = csr_matrix([t for t in distance_matrix])
+        output = minimum_spanning_tree(X)
+        return output.toarray()
     #An auxiliary method for computing the initial pairwise-alignment
     #Computes the principal components of two meshes and all possible rotations of the 3-axes)
     #params: mesh1, mesh2 meshes that have vertices that are 3 x n matrices
@@ -81,5 +86,3 @@ class Correspondence:
             Rotations.append(self.best_pairwise_PCA_alignment(mesh1,i,self))
         return(Rotations)
         
-
-

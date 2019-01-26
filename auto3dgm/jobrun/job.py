@@ -59,6 +59,13 @@ class Job(object):
 			'func': self.func
 		}
 
+	def validate(self):
+    	"""Check all components and return true if all validate"""
+    	if (self.data and self.__validate_data(self.data) 
+    		and self.params and self.__validate_params(self.params) 
+    		and self.func and self.__vlaidate_func(self.func)):
+    		return True
+
 	def __validate_data(self, data):
 		"""data must be dict, every element must be dict with >=1 element"""
         if (not data 
@@ -84,7 +91,7 @@ class Job(object):
         """Func must be callable"""
         if not func or not callable(func):
             self.__validation_error(type='func', func)
-        return True
+        return True  
 
     def __validation_error(self, error_type, var):
     	allowed_types = ['data', 'data_item', 'params', 'func']

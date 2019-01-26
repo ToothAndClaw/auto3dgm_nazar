@@ -36,12 +36,15 @@ class Mesh:
     @property
     def faces(self):
         cell_n = self.polydata.GetNumberOfCells()
-        point_n = self.polydata.GetCell(0).GetNumberOfPoints()
-        faces = np.zeros((cell_n, point_n), dtype=int)
-        for i in range(cell_n):
-            for j in range(point_n):
-                faces[i, j] = self.polydata.GetCell(i).GetPointId(j)
-        return faces
+        if cell_n:
+            point_n = self.polydata.GetCell(0).GetNumberOfPoints()
+            faces = np.zeros((cell_n, point_n), dtype=int)
+            for i in range(cell_n):
+                for j in range(point_n):
+                    faces[i, j] = self.polydata.GetCell(i).GetPointId(j)
+            return faces
+        else:
+            return np.empty([0,3])
 
     @property
     def centroid(self):
@@ -109,5 +112,3 @@ def isValidRotation(arr):
     I = np.identity(3)
     n = np.linalg.norm(I - identity)
     return n < 1e-6
-
-    

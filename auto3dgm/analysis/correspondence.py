@@ -4,6 +4,7 @@ from scipy import linalg
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance_matrix
 import numpy as np
+from auto3dgm import jobrun
 
 class Correspondence:
     #params: self,
@@ -12,19 +13,51 @@ class Correspondence:
     #globalize: flag for performing globalized pairwise alignment (default:yes)
     #mirror: flag for allowing mirrored meshes (default: no)
     #reference_index= index of the mesh that other meshes are aligned against
-    def __init__(self, meshes, globalize=1, mirror=0, reference_index=0):
+    def __init__(self, meshes, globalize=1, mirror=0, initial_alignment=None):
         self.globalize=globalize
         self.mirror=mirror
-        if isinstance(meshes,(list,dict)):
-            if isinstance(meshes,(list,)):
-                self.mesh_list=meshes
-            if isinstance(meshes,(dict,)):
-                self.mesh_list=meshes.keys()
-            if(reference_index>len(meshes)-1):
-                msg = 'There are fewer meshes than the given reference_index'
-                raise OSError(msg)
-            else:
-                 self.reference_index=reference_index
+        self.meshes=meshes
+        self.initial_alignment=initial_alignment
+
+        job_data = self.generate_job_data()
+        job_params = self.generate_params()
+        job_func = self.generate_func()
+
+        new_job = jobrun.job(data=job_data, params=job_params, func=job_func)
+
+
+
+
+    
+
+    def generate_job_data(self):
+        ret = {}
+        for first in self.meshes.keys():
+            for second in self.meshes.keys():
+                if not has_pair(first, second, ret):
+                    val = dict_val_gen(first, second, meshes[first], meshes[seond])
+                    ret[first + second] = val
+        return ret
+
+
+    @staticmethod
+    def dict_val_gen(first, second, first_val, second_val):
+        return {first: first_val, second: second_val}
+
+    @staticmethod
+    def has_pair(key1, key2, dictionary):
+        str1 = key1 + key2
+        str2 = key2 + key1
+        if (str1 in dictionary.keys()) or (str2 in dictionary.keys()):
+            return True
+        return False
+
+    def generate_params(self):
+        return {'mirror': self.mirror, 'inital_alignment': self.initial_alignment}
+
+    def generate_func(self):
+        return self.initial_alignment
+
     @staticmethod
     def find_mst(distance_matrix):
         X = csr_matrix([t for t in distance_matrix])
@@ -41,7 +74,7 @@ class Correspondence:
         UY,DY,VY =linalg.svd(Y, full_matrices=False)
         P=[]
         R=[]
-	P.append(np.array([1,1,1]))
+    P.append(np.array([1,1,1]))
 	P.append(np.array([1,-1,-1]))
 	P.append(np.array([-1,-1,1]))
 	P.append(np.array([-1,1,-1]))

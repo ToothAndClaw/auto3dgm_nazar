@@ -42,14 +42,14 @@ class JobRun(object):
         """Run jobs locally using a single core"""
         job_dict = {
             'output': {},
-            'input': self.analysis_dict
+            'input': self.job
         }
 
         results_dict = {}
-        for k, v in self.analysis_dict.items():
-            results_dict[k] = self.func(data=v, **self.params)
+        for k, v in self.job.data.items():
+            results_dict[k] = self.job.func(**v, **self.job.params)
 
-        job_dict['output']['results'] = results_dict
+        job_dict['output'] = results_dict
         return job_dict
         
     def run_multi(self):

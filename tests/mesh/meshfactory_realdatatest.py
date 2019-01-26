@@ -61,32 +61,14 @@ MeshFactory.mesh_from_file(filestring)
 
 
 '''
-In [31]: filestring='/home/safari/Desktop/tutkimus/Slicer/HackathonJAN/testdata/20_Test_Teeth_PLY/12144_U02_Eosimias_crop-smooth.ply'
+In [12]: filestring='/home/safari/Desktop/tutkimus/Slicer/HackathonJAN/testdata/20_Test_Teeth_PLY/12144_U02_Eosimias_crop-smooth.ply'
 
-In [32]: MeshFactory.mesh_from_file(filestring)
-<type 'vtkobject'>
----------------------------------------------------------------------------
-AttributeError                            Traceback (most recent call last)
-<ipython-input-32-dce76620cc80> in <module>()
-----> 1 MeshFactory.mesh_from_file(filestring)
+In [13]: MeshFactory.mesh_from_file(filestring)
+<class 'vtkCommonDataModelPython.vtkPolyData'>
+Out[13]: <auto3dgm.mesh.mesh.Mesh at 0x7f85c374fa58>
 
-/home/safari/Desktop/tutkimus/Slicer/HackathonJAN/gitstuff/auto3dgm/auto3dgm/mesh/meshfactory.py in mesh_from_file(file_path)
-     44             polydata = reader.GetOutput()
-     45             if isinstance(polydata, vtkPolyData):
----> 46                 return Mesh(polydata)
-     47             else:
-     48                 msg = 'VTK reader output type expected {}, but got {}'.format(
-
-/home/safari/Desktop/tutkimus/Slicer/HackathonJAN/gitstuff/auto3dgm/auto3dgm/mesh/mesh.pyc in __init__(self, vtk_mesh)
-     10         center = vtk.vtkCenterOfMass()
-     11         print(type(vtk_mesh))
----> 12         center.SetInputData(vtk_mesh)
-     13         center.SetUseScalarsAsWeights(False)
-     14         center.Update()
-
-AttributeError: SetInputData
 '''
 
-# Result: Fail
+# Result: Pass
 
 

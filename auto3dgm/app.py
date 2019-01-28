@@ -72,7 +72,7 @@ class Auto3dgm:
 	def validate_parameters(self): # TODO
 		return
 
-	def __import_config(self) # TODO
+	def __import_config(self): # TODO
 		return 
 
 	def __write_output_dirs(self): # TODO

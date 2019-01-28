@@ -43,7 +43,7 @@ class MeshFactory(object):
             
             polydata = reader.GetOutput()
             if isinstance(polydata, vtkPolyData):
-                return Mesh(polydata)
+                return Mesh(polydata, file_path)
             else:
                 msg = 'VTK reader output type expected {}, but got {}'.format(
                     'vtkCommonDataModelPython.vtkPolyData', type(polydata))

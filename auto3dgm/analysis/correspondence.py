@@ -14,35 +14,53 @@ class Correspondence:
     #mirror: flag for allowing mirrored meshes (default: no)
     #reference_index= index of the mesh that other meshes are aligned against
     def __init__(self, meshes, globalize=1, mirror=0, initial_alignment=None):
+        #assumes that meshes is an ordered list of meshes
         self.globalize=globalize
         self.mirror=mirror
         self.meshes=meshes
         self.initial_alignment=initial_alignment
+        self.n = len(meshes)
 
         job_data = self.generate_job_data()
         job_params = self.generate_params()
         job_func = self.generate_func()
 
-        new_job = jobrun.job(data=job_data, params=job_params, func=job_func)
+        new_job = job.Job(data=job_data, params=job_params, func=job_func)
+        new_jobrun = jobrun.Jobrun(job=new_job)
+        output = new_jobrun.execute_jobs()
+        #dependent on changing line 52 from jobrun (job_dict['output']['results'].... -> job_dict['output'] = results_dict)
+        #also depends on results_dict being in d->float, p->permutation r-> rotaiton mapping
+        results_dict = output['output']
+        
+        self.d_ret = [[0 for x in range(n)] for y in range(n)]
+        self.p_ret = [[0 for x in range(n)] for y in range(n)]
+        self.r_ret = [[0 for x in range(n)] for y in range(n)]
 
 
+        for key in results_dict.keys():
+            #key will be a tuple
+            d_ret[key[0]][key[1]] = results_dict[key]['d']
+            p_ret[key[0]][key[1]] = results_dict[key]['p']
+            r_ret[key[0]][key[1]] = results_dict[key]['r']
 
+        if globalize:
+            self.mst_matrix = find_mst(d_ret)
 
-    
 
     def generate_job_data(self):
         ret = {}
-        for first in self.meshes.keys():
-            for second in self.meshes.keys():
+        for first in self.meshes:
+            for second in self.meshes:
                 if not has_pair(first, second, ret):
-                    val = dict_val_gen(first, second, meshes[first], meshes[seond])
-                    ret[first + second] = val
+                    val = dict_val_gen(self.meshes.index(first), self.meshes.index(second), first, second)
+                    toopl = (self.meshes.index(first), self.meshes.index(second))
+                    ret[toopl] = val
         return ret
 
 
     @staticmethod
-    def dict_val_gen(first, second, first_val, second_val):
-        return {first: first_val, second: second_val}
+    def dict_val_gen(firstindex, secondindex, first, second):
+        return {firstindex: first, secondindex: second}
 
     @staticmethod
     def has_pair(key1, key2, dictionary):

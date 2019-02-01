@@ -21,6 +21,7 @@ class Correspondence:
         self.initial_alignment=initial_alignment
         self.n = len(meshes)
 
+
         job_data = self.generate_job_data()
         job_params = self.generate_params()
         job_func = self.generate_func()

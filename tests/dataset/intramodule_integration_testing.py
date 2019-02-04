@@ -5,6 +5,12 @@ from auto3dgm.dataset.datasetfactory import *
 directorystring='/home/safari/Desktop/tutkimus/Slicer/HackathonJAN/testdata/20_Test_Teeth_PLY/'
 A=DatasetFactory.ds_from_dir(directorystring)
 
+filelist=[]
+filelist.append('/home/safari/Desktop/tutkimus/Slicer/HackathonJAN/testdata/20_Test_Teeth_PLY/12144_U02_Eosimias_crop-smooth.ply')
+filelist.append('/home/safari/Desktop/tutkimus/Slicer/HackathonJAN/testdata/20_Test_Teeth_PLY/12144_U05_Eosimias_crop-smooth.ply')
+
+B=DatasetFactory.ds_from_filelist(filelist)
+
 '''
 <class 'vtkCommonDataModelPython.vtkPolyData'>
 <class 'vtkCommonDataModelPython.vtkPolyData'>
@@ -31,7 +37,7 @@ In [4]: A
 Out[4]: <auto3dgm.dataset.datasetcollection.DatasetCollection at 0x7f3e64425a58>
 '''
 
-A.dir
+dir(A)
 
 '''
 dir(A)

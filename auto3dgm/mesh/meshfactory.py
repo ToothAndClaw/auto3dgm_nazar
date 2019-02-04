@@ -1,7 +1,9 @@
 from os.path import isfile, splitext
 
-from mesh import Mesh
-from vtk import vtkPLYReader,vtkOBJReader,vtkSTLReader,vtkPolyData
+from auto3dgm.mesh.mesh import Mesh
+from numpy import array, ndarray, newaxis, concatenate, empty
+from vtk import vtkPLYReader,vtkOBJReader,vtkSTLReader,vtkPolyData, vtkPoints, vtkCellArray
+from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk, numpy_to_vtkIdTypeArray
 from warnings import warn
 
 
@@ -51,3 +53,23 @@ class MeshFactory(object):
                 file_path, ', '.join(allowed_filetypes))
             raise OSError(msg)
 
+    @staticmethod
+    def mesh_from_data(vertices, faces=empty([0,0]), deep=True):
+        """Returns a VTK PolyData object from vertex and face ndarrays"""
+        polydata = vtkPolyData()
+
+        # vertices
+        points = vtkPoints()
+        points.SetData(numpy_to_vtk(vertices, deep=deep))
+        polydata.SetPoints(points)
+
+        # faces
+        if isinstance(faces, ndarray) and faces.ndim == 2 and faces.shape[1] == 3:
+            faces = concatenate((array([3, 3, 3])[:, newaxis], faces), axis=1)
+            cells = vtkCellArray()
+            nf = faces.shape[0]
+            vtk_id_array = numpy_to_vtkIdTypeArray(faces.ravel(), deep=deep)
+            cells.SetCells(nf, vtk_id_array)
+            polydata.SetPolys(cells)
+
+        return Mesh(polydata)

@@ -3,28 +3,80 @@ from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance_matrix, KDTree
 from scipy.optimize import linear_sum_assignment as Hungary
 import numpy as np
+from auto3dgm import jobrun
 
 
 class Correspondence:
-    # params: self,
-    # meshes: either a mesh object or a list or a dictionary of mesh objects
-    # meshes: a list of meshes
-    # globalize: flag for performing globalized pairwise alignment (default:yes)
-    # mirror: flag for allowing mirrored meshes (default: no)
-    # reference_index= index of the mesh that other meshes are aligned against
-    def __init__(self, meshes, globalize=1, mirror=0, reference_index=0):
-        self.globalize = globalize
-        self.mirror = mirror
-        if isinstance(meshes, (list, dict)):
-            if isinstance(meshes, (list,)):
-                self.mesh_list = meshes
-            if isinstance(meshes, (dict,)):
-                self.mesh_list = meshes.keys()
-            if (reference_index > len(meshes) - 1):
-                msg = 'There are fewer meshes than the given reference_index'
-                raise OSError(msg)
-            else:
-                self.reference_index = reference_index
+    #params: self,
+    #meshes: either a mesh object or a list or a dictionary of mesh objects
+    #meshes: a list of meshes 
+    #globalize: flag for performing globalized pairwise alignment (default:yes)
+    #mirror: flag for allowing mirrored meshes (default: no)
+    #reference_index= index of the mesh that other meshes are aligned against
+    def __init__(self, meshes, globalize=1, mirror=0, initial_alignment=None):
+        #assumes that meshes is an ordered list of meshes
+        self.globalize=globalize
+        self.mirror=mirror
+        self.meshes=meshes
+        self.initial_alignment=initial_alignment
+        self.n = len(meshes)
+
+
+        job_data = self.generate_job_data()
+        job_params = self.generate_params()
+        job_func = self.generate_func()
+
+        new_job = job.Job(data=job_data, params=job_params, func=job_func)
+        new_jobrun = jobrun.Jobrun(job=new_job)
+        output = new_jobrun.execute_jobs()
+        #dependent on changing line 52 from jobrun (job_dict['output']['results'].... -> job_dict['output'] = results_dict)
+        #also depends on results_dict being in d->float, p->permutation r-> rotaiton mapping
+        results_dict = output['output']
+        
+        self.d_ret = [[0 for x in range(n)] for y in range(n)]
+        self.p_ret = [[0 for x in range(n)] for y in range(n)]
+        self.r_ret = [[0 for x in range(n)] for y in range(n)]
+
+
+        for key in results_dict.keys():
+            #key will be a tuple
+            d_ret[key[0]][key[1]] = results_dict[key]['d']
+            p_ret[key[0]][key[1]] = results_dict[key]['p']
+            r_ret[key[0]][key[1]] = results_dict[key]['r']
+
+        if globalize:
+            self.mst_matrix = find_mst(d_ret)
+
+
+    def generate_job_data(self):
+        ret = {}
+        for first in self.meshes:
+            for second in self.meshes:
+                if not has_pair(first, second, ret):
+                    val = dict_val_gen(self.meshes.index(first), self.meshes.index(second), first, second)
+                    toopl = (self.meshes.index(first), self.meshes.index(second))
+                    ret[toopl] = val
+        return ret
+
+
+    @staticmethod
+    def dict_val_gen(firstindex, secondindex, first, second):
+        return {firstindex: first, secondindex: second}
+
+    @staticmethod
+    def has_pair(key1, key2, dictionary):
+        str1 = key1 + key2
+        str2 = key2 + key1
+        if (str1 in dictionary.keys()) or (str2 in dictionary.keys()):
+            return True
+        return False
+
+    def generate_params(self):
+        return {'mirror': self.mirror, 'inital_alignment': self.initial_alignment}
+
+    def generate_func(self):
+        return self.initial_alignment
+
 
     @staticmethod
     # An auxiliary method for computing the initial pairwise-alignment
@@ -39,6 +91,7 @@ class Correspondence:
         UY, DY, VY = linalg.svd(Y, full_matrices=False)
         P=[]
         R=[]
+
         P.append(np.array([1, 1, 1]))
         P.append(np.array([1, -1, -1]))
         P.append(np.array([-1, -1, 1]))

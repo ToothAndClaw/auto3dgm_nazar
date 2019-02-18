@@ -2,8 +2,14 @@ from numpy import linalg
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance_matrix, KDTree
 from scipy.optimize import linear_sum_assignment as Hungary
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import minimum_spanning_tree
 import numpy as np
 from auto3dgm import jobrun
+from auto3dgm.jobrun import jobrun
+from auto3dgm.jobrun import job
+from auto3dgm.jobrun.jobrun import JobRun
+from auto3dgm.jobrun.job import Job
 
 
 class Correspondence:
@@ -13,47 +19,48 @@ class Correspondence:
     #globalize: flag for performing globalized pairwise alignment (default:yes)
     #mirror: flag for allowing mirrored meshes (default: no)
     #reference_index= index of the mesh that other meshes are aligned against
+    
     def __init__(self, meshes, globalize=1, mirror=0, initial_alignment=None):
         #assumes that meshes is an ordered list of meshes
         self.globalize=globalize
         self.mirror=mirror
         self.meshes=meshes
         self.initial_alignment=initial_alignment
-        self.n = len(meshes)
-
+        n = len(meshes)
 
         job_data = self.generate_job_data()
         job_params = self.generate_params()
         job_func = self.generate_func()
 
-        new_job = job.Job(data=job_data, params=job_params, func=job_func)
-        new_jobrun = jobrun.Jobrun(job=new_job)
+        new_job = Job(data=job_data, params=job_params, func=job_func)
+        new_jobrun = JobRun(job=new_job)
         output = new_jobrun.execute_jobs()
         #dependent on changing line 52 from jobrun (job_dict['output']['results'].... -> job_dict['output'] = results_dict)
         #also depends on results_dict being in d->float, p->permutation r-> rotaiton mapping
         results_dict = output['output']
         
-        self.d_ret = [[0 for x in range(n)] for y in range(n)]
-        self.p_ret = [[0 for x in range(n)] for y in range(n)]
-        self.r_ret = [[0 for x in range(n)] for y in range(n)]
+        self.d_ret = [[None for x in range(n)] for y in range(n)]
+        self.p_ret = [[None for x in range(n)] for y in range(n)]
+        #what is permutation
+        self.r_ret = [[None for x in range(n)] for y in range(n)]
 
 
         for key in results_dict.keys():
             #key will be a tuple
-            d_ret[key[0]][key[1]] = results_dict[key]['d']
-            p_ret[key[0]][key[1]] = results_dict[key]['p']
-            r_ret[key[0]][key[1]] = results_dict[key]['r']
+            self.d_ret[key[0]][key[1]] = results_dict[key]['d']
+            self.p_ret[key[0]][key[1]] = results_dict[key]['p']
+            self.r_ret[key[0]][key[1]] = results_dict[key]['r']
 
         if globalize:
-            self.mst_matrix = find_mst(d_ret)
+            self.mst_matrix = Correspondence.find_mst(self.d_ret)
 
 
     def generate_job_data(self):
         ret = {}
         for first in self.meshes:
             for second in self.meshes:
-                if not has_pair(first, second, ret):
-                    val = dict_val_gen(self.meshes.index(first), self.meshes.index(second), first, second)
+                if not Correspondence.has_pair(first, second, ret):
+                    val = Correspondence.dict_val_gen(self.meshes.index(first), self.meshes.index(second), first, second)
                     toopl = (self.meshes.index(first), self.meshes.index(second))
                     ret[toopl] = val
         return ret
@@ -77,6 +84,11 @@ class Correspondence:
     def generate_func(self):
         return self.initial_alignment
 
+    @staticmethod
+    def find_mst(distance_matrix):
+        X = csr_matrix([t for t in distance_matrix])
+        output = minimum_spanning_tree(X)
+        return output.toarray()
 
     @staticmethod
     # An auxiliary method for computing the initial pairwise-alignment

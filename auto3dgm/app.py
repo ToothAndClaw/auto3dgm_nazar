@@ -2,9 +2,9 @@
 Main control flow for auto3dgm. Mainly used as a speculative document for now.
 """
 
-from auto3dgm.dataset import DatasetFactory
+from auto3dgm.dataset.datasetfactory import DatasetFactory
 from auto3dgm.mesh.subsample import Subsample
-from auto3dgm.analysis import Correspondence
+from auto3dgm.analysis.correspondence import Correspondence
 
 class Auto3dgm:
 	def __init__(self, config={}, run=True):

@@ -6,7 +6,7 @@ import math
 
 class Mesh:
     #params: self, and a VTK Object called vtk_mesh
-    def __init__(self, vtk_mesh, center_scale=True, name=None):
+    def __init__(self, vtk_mesh, center_scale=False, name=None):
         center = vtk.vtkCenterOfMass()
         print(type(vtk_mesh))
         center.SetInputData(vtk_mesh)

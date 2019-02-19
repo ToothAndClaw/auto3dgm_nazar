@@ -23,7 +23,7 @@ class MeshFactory(object):
     """
 
     @staticmethod
-    def mesh_from_file(file_path):
+    def mesh_from_file(file_path, center_scale=False):
         """Returns a VTK PolyData object from a mesh.
         TODO ing file types: off. (The PyMesh Package might help.)"""
         allowed_filetypes = ['.ply', '.obj','.stl']
@@ -43,7 +43,7 @@ class MeshFactory(object):
             
             polydata = reader.GetOutput()
             if isinstance(polydata, vtkPolyData):
-                return Mesh(polydata, file_path)
+                return Mesh(polydata, center_scale, file_path)
             else:
                 msg = 'VTK reader output type expected {}, but got {}'.format(
                     'vtkCommonDataModelPython.vtkPolyData', type(polydata))
@@ -54,8 +54,11 @@ class MeshFactory(object):
             raise OSError(msg)
 
     @staticmethod
-    def mesh_from_data(vertices, faces=empty([0,0]), deep=True):
+    def mesh_from_data(vertices, faces=empty([0,0]), center_scale=False, deep=True):
         """Returns a VTK PolyData object from vertex and face ndarrays"""
+        vertices = array(vertices, dtype=float)
+        faces = array(faces, dtype=int)
+
         polydata = vtkPolyData()
 
         # vertices
@@ -72,4 +75,4 @@ class MeshFactory(object):
             cells.SetCells(nf, vtk_id_array)
             polydata.SetPolys(cells)
 
-        return Mesh(polydata)
+        return Mesh(vtk_mesh=polydata, center_scale=center_scale)

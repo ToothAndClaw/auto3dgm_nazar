@@ -3,6 +3,7 @@ from auto3dgm.mesh.meshfactory import MeshFactory
 from auto3dgm.dataset.datasetcollection import DatasetCollection
 from auto3dgm.mesh.subsample import Subsample 
 from numpy import empty
+
 class DatasetFactory(object):
     #params: directory string
     #params: filetype

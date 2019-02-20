@@ -1,5 +1,4 @@
 from os.path import isfile, splitext
-
 from auto3dgm.mesh.mesh import Mesh
 from numpy import array, ndarray, newaxis, concatenate, empty
 from vtk import vtkPLYReader,vtkOBJReader,vtkSTLReader,vtkPolyData, vtkPoints, vtkCellArray
@@ -26,7 +25,7 @@ class MeshFactory(object):
     def mesh_from_file(file_path, center_scale=False):
         """Returns a VTK PolyData object from a mesh.
         TODO ing file types: off. (The PyMesh Package might help.)"""
-        allowed_filetypes = ['.ply', '.obj','.stl']
+        allowed_filetypes = ['.ply', '.obj','.stl','.off']
 
         if isfile(file_path) and splitext(file_path)[1] in allowed_filetypes:
             if splitext(file_path)[1] == '.ply':
@@ -37,6 +36,9 @@ class MeshFactory(object):
 
             elif splitext(file_path)[1] == '.stl':
                 reader = vtkSTLReader()
+            elif splitext(file_path)[1] == '.off':
+                (vertices, faces)=MeshFactory.off_parser(file_path)
+                return MeshFactory.mesh_from_data(vertices, faces, center_scale=center_scale)
 
             reader.SetFileName(file_path)
             reader.Update()
@@ -68,7 +70,7 @@ class MeshFactory(object):
 
         # faces
         if isinstance(faces, ndarray) and faces.ndim == 2 and faces.shape[1] == 3:
-            faces = concatenate((array([3, 3, 3])[:, newaxis], faces), axis=1)
+            faces = concatenate((array([3, 3, 3])[:, newaxis], faces.T), axis=1)
             cells = vtkCellArray()
             nf = faces.shape[0]
             vtk_id_array = numpy_to_vtkIdTypeArray(faces.ravel(), deep=deep)
@@ -76,3 +78,33 @@ class MeshFactory(object):
             polydata.SetPolys(cells)
 
         return Mesh(vtk_mesh=polydata, center_scale=center_scale)
+
+    @staticmethod
+    def off_parser(file_path):
+        file=open("hammas.off","r")
+        # Checking we have valid headers
+        A=file.readline().split()
+        if A[0] != 'OFF':
+            msg = 'The input file does not seem to be valid off file, first line should read "OFF".'
+            raise TypeError(msg)
+        #Reading in the number of vertices, faces and edges, and pre-formatting their arrays
+        (V,F,E)=map(int,file.readline().strip().split(' '))
+        vertices=empty([V,3])
+        faces=empty([F,3])
+        # Read in the vertices
+        for i in range(0,V):
+            vertices[i]=list(map(float,file.readline().strip().split(' ')))
+        #Read in the faces
+        for i in range(0,F):
+            line=list(map(int,file.readline().strip().split(' ')))
+        # Notify the user that there are non-triangular faces.
+        # Non-triangular faces wouldn't be supported by the vtk setup that we have anyway.
+        # Better way would be to triangulate the polygons, that can be added if deemed useful
+        # Also, we could use warnings
+            if len(line)!=4:
+                print("Warning: The .off contains non-triangular faces, holes might have been created.")
+            if (line[0]!=3 and len(line)==4):
+                print("Warning: The .off file contains a face that is defined to be non-triangular. It is a valid triangle, reading it as a triangle.")
+            faces[i]=line[1:4]
+        #TODO Once the correct format for mesh_from_data face array is clarified, decide if faces should be transposed or not
+        return(vertices, faces.T)

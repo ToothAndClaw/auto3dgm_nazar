@@ -2,8 +2,8 @@ from numpy import linalg
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance_matrix, KDTree
 from scipy.optimize import linear_sum_assignment as Hungary
-from scipy.sparse import csr_matrix
-from scipy.sparse.csgraph import minimum_spanning_tree
+from scipy.sparse import csr_matrix, identity
+from scipy.sparse.csgraph import minimum_spanning_tree, shortest_path
 import numpy as np
 from auto3dgm import jobrun
 from auto3dgm.jobrun import jobrun
@@ -39,10 +39,10 @@ class Correspondence:
         #also depends on results_dict being in d->float, p->permutation r-> rotaiton mapping
         results_dict = output['output']
         
-        self.d_ret = [[None for x in range(n)] for y in range(n)]
-        self.p_ret = [[None for x in range(n)] for y in range(n)]
+        self.d_ret = np.array([[None for x in range(n)] for y in range(n)])
+        self.p_ret = np.array([[None for x in range(n)] for y in range(n)])
         #what is permutation
-        self.r_ret = [[None for x in range(n)] for y in range(n)]
+        self.r_ret = np.array([[None for x in range(n)] for y in range(n)])
 
 
         for key in results_dict.keys():
@@ -89,6 +89,78 @@ class Correspondence:
         X = csr_matrix([t for t in distance_matrix])
         output = minimum_spanning_tree(X)
         return output.toarray()
+
+    @staticmethod
+    def globalize(pa, tree, base, type='mst'):
+        '''
+        takes a pairwise alignment (pa) and a tree (NP-matrix) and returns
+        the global alignment obtained by propagating the tree
+        '''
+        n = len(tree)
+        [r, c] = np.nonzero(tree)
+        mm = min(r[0], c[0])
+        MM = max(r[0], c[0])
+        N = len(pa.P(mm, MM)[0])
+
+        retR = [None] * n
+        retP = [None] * n
+
+        BaseDistMatrix = pa.d
+        temp = np.diag(np.diag(BaseDistMatrix))
+        BaseDistMatrix = BaseDistMatrix - temp
+        BaseDistMatrix += BaseDistMatrix.transpose()
+
+        tD = BaseDistMatrix
+        tD += diag(np.matrix(np.ones(len(tD)) * np.inf))
+        epsilon = mean(min(tD, [], 2))
+
+        adjMat = exp(np.square(-tD) / np.square(epsilon))
+
+        RCell = [[None] * len(pa.R) for n in len(pa.R[0])]
+
+        for j in range(1, len(RCell)):
+            for k in range(j+1, len(RCell[0])):
+                RCell[j][k] = pa.R[j][k]
+                RCell[k][j] = RCell[j][k].transpose()
+        
+        if type is 'mst':
+            for li in range(1, n):
+                [dist, pat] = graphshortestpaths(tree+tree.transpose(), li, base)
+                P = identity(N)
+                R = np.identity(3)
+                for lj in range(2, len(pat)):
+                    if pat[lj - 1] > pat(lj):
+                        P = np.matmul(P, pa.P[pat[lj], pat[lj-1]])
+                        R = np.matmul(pa.R[pat[lj], pat[lj-1], R)
+                    else:
+                        P = np.matmul(P, pa.P[pat[lj-1], pat[lj]])
+                        R = np.matmul(pa.R[pat[lj-1], pat[lj], R)
+                retR[li] = R
+                retP[li] = P
+        return [retR, retP]
+                
+
+    @staticmethod
+    '''
+    returns a [dist, pat] object with dist (double of distance between index and reference) and path (1xN vector representing path from reference->index)
+    '''
+    def graphshortestpaths(graph, index, reference):
+        [dist_matrix, predecessors] = shortest_path(graph, return_predecessors=True)
+        dist = dist_matrix[reference, index]
+        pat= getpath(predecessors, index, reference)
+        return [dist, pat]
+
+    @staticmethod
+    def getpath(predecessors, index, reference):
+        ancestors = predecessors[reference]
+        tracer=index
+        ret=[]
+        while(tracer != reference):
+            ret.append(tracer)
+            tracer = ancestors[tracer]
+        ret.append(reference)
+        ret.reverse()
+        return ret
 
     @staticmethod
     # An auxiliary method for computing the initial pairwise-alignment

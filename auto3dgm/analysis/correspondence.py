@@ -94,7 +94,7 @@ class Correspondence:
     def globalize(pa, tree, base, type='mst'):
         '''
         takes a pairwise alignment (pa) and a tree (NP-matrix) and returns
-        the global alignment obtained by propagating the tree
+        the global alignment obtained by propagating the tree as a list
         '''
         n = len(tree)
         [r, c] = np.nonzero(tree)

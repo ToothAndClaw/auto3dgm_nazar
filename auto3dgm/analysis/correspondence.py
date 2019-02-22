@@ -114,7 +114,7 @@ class Correspondence:
         tD += diag(np.matrix(np.ones(len(tD)) * np.inf))
         epsilon = mean(min(tD, [], 2))
 
-        adjMat = exp(np.square(-tD) / np.square(epsilon))
+        adjMat = exp(-np.square(tD) / np.square(epsilon))
 
         RCell = [[None] * len(pa.R) for n in len(pa.R[0])]
 

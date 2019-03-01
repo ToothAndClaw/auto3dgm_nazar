@@ -6,7 +6,7 @@ import math
 
 class Mesh:
     #params: self, and a VTK Object called vtk_mesh
-    def __init__(self, vtk_mesh):
+    def __init__(self, vtk_mesh, center_scale=False, name=None):
         center = vtk.vtkCenterOfMass()
         print(type(vtk_mesh))
         center.SetInputData(vtk_mesh)
@@ -14,14 +14,18 @@ class Mesh:
         center.Update()
         self.centerpoint = center.GetCenter()
 
-        transform = vtk.vtkTransform()
-        transform.Translate(-self.centerpoint[0], -self.centerpoint[1], -self.centerpoint[2])
-        transformt = vtk.vtkTransformPolyDataFilter()
-        transformt.SetInputData(vtk_mesh)
-        transformt.SetTransform(transform)
-        transformt.Update()
+        if center_scale:
+            transform = vtk.vtkTransform()
+            transform.Translate(-self.centerpoint[0], -self.centerpoint[1], -self.centerpoint[2])
+            transformt = vtk.vtkTransformPolyDataFilter()
+            transformt.SetInputData(vtk_mesh)
+            transformt.SetTransform(transform)
+            transformt.Update()
+            self.polydata = transformt.GetOutput()
+        else:
+            self.polydata = vtk_mesh
 
-        self.polydata = transformt.GetOutput()
+        self.name = name
 
     ''' we don't have to use getters like this, but using it in this case bc 1) 
     attributes are now pointers and don't have to be updated, 2) can't be 
@@ -30,6 +34,10 @@ class Mesh:
     @property 
     def vertices(self):
         return vtk_to_numpy(self.polydata.GetPoints().GetData())
+
+    @property
+    def get_name(self):
+        return self.name
 
     ''' I wrote ugly code here, but vertex IDs are better than raw per-face point 
     coordinates and VTK does not make getting this easy '''

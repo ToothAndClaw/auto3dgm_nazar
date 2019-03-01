@@ -1,6 +1,6 @@
 from os.path import isfile, splitext
 from auto3dgm.mesh.mesh import Mesh
-from numpy import array, ndarray, newaxis, concatenate, empty
+from numpy import array, ndarray, concatenate, empty, full
 from vtk import vtkPLYReader,vtkOBJReader,vtkSTLReader,vtkPolyData, vtkPoints, vtkCellArray
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk, numpy_to_vtkIdTypeArray
 from warnings import warn
@@ -70,7 +70,7 @@ class MeshFactory(object):
 
         # faces
         if isinstance(faces, ndarray) and faces.ndim == 2 and faces.shape[1] == 3:
-            faces = concatenate((array([3, 3, 3])[:, newaxis], faces.T), axis=1)
+            faces = concatenate((full([faces.shape[0], 1], 3), faces), axis=1)
             cells = vtkCellArray()
             nf = faces.shape[0]
             vtk_id_array = numpy_to_vtkIdTypeArray(faces.ravel(), deep=deep)

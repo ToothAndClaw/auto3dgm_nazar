@@ -95,7 +95,6 @@ class Correspondence:
     # Computes the principal components of two meshes and all possible rotations of the 3-axes)
     # params: mesh1, mesh2 meshes that have vertices that are 3 x n matrices
     #        mirror: a flag for whether or not mirror images of the shapes should be considered
-
     def principal_component_alignment(mesh1, mesh2, mirror):
         X = mesh1.vertices.T
         Y = mesh2.vertices.T

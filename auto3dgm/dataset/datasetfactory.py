@@ -10,7 +10,7 @@ class DatasetFactory(object):
     #params: directory string
     #params: filetype
     @staticmethod
-    def ds_from_dir(dir_path):
+    def ds_from_dir(dir_path, center_scale=False):
         c = [join(dir_path, x) for x in listdir(dir_path)]
         files = [f for f in c if isfile(f) and splitext(f)[1] in DatasetFactory.__ftypes]
         if not files:
@@ -19,7 +19,7 @@ class DatasetFactory(object):
         meshes=[]
         mesheslist=[]
         for file in files: 
-            meshes.append(MeshFactory.mesh_from_file(file))
+            meshes.append(MeshFactory.mesh_from_file(file, center_scale))
         mesheslist.append(meshes)
         return(DatasetCollection(datasets=mesheslist))
     #params: filelist: a list of files

@@ -32,7 +32,7 @@ class DatasetCollection:
             #More names than datasets
             dataset_names=analysis_set_names[:len(analysis_sets)]
             #Equally many names and datasets
-        self.analysis_sets=dict(zip(dataset_names,datasets))
+        self.analysis_sets=dict(zip(analysis_set_names,analysis_sets))
 
     @staticmethod
     def add_dataset(self,dataset,dataset_name):

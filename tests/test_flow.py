@@ -2,10 +2,10 @@ from auto3dgm.dataset.datasetfactory import DatasetFactory
 from auto3dgm.mesh.subsample import Subsample
 from auto3dgm.analysis.correspondence import Correspondence
 
-mesh_dir = "fixtures/samples/"
+mesh_dir = "./fixtures/sample/"
 
 # Create a DatasetCollection with meshes from a sample directory 
-dc = DatasetFactory.ds_from_dir(mesh_dir)
+dc = DatasetFactory.ds_from_dir(dir_path=mesh_dir, center_scale=True)
 print(dc)
 print(dc.datasets)
 print(dc.analysis_sets) # Why is the initial dataset copied as an analysis_set?

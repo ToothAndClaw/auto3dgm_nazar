@@ -91,64 +91,63 @@ class Correspondence:
         return output.toarray()
 
     @staticmethod
+    def graphshortestpaths(graph, index, reference):
+        '''
+        returns a [dist, pat] object with dist (double of distance between index and reference) and path (1xN vector representing path from reference->index)
+        '''
+        [dist_matrix, predecessors] = shortest_path(graph, return_predecessors=True)
+        dist = dist_matrix[reference, index]
+        pat= getpath(predecessors, index, reference)
+        return [dist, pat]
+
+    @staticmethod
     def globalize(pa, tree, base, type='mst'):
         '''
-        takes a pairwise alignment (pa) and a tree (NP-matrix) and returns
+        takes a pairwise alignment (pa) formatted as a 3-entry array [D, R, P] and a tree (NP-matrix) and returns
         the global alignment obtained by propagating the tree as a list
         '''
         n = len(tree)
         [r, c] = np.nonzero(tree)
         mm = min(r[0], c[0])
         MM = max(r[0], c[0])
-        N = len(pa.P(mm, MM)[0])
+        N = len(pa[2][mm, MM][0])
 
         retR = [None] * n
         retP = [None] * n
-
-        BaseDistMatrix = pa.d
+        '''
+        BaseDistMatrix = pa[0]
         temp = np.diag(np.diag(BaseDistMatrix))
         BaseDistMatrix = BaseDistMatrix - temp
         BaseDistMatrix += BaseDistMatrix.transpose()
 
         tD = BaseDistMatrix
-        tD += diag(np.matrix(np.ones(len(tD)) * np.inf))
-        epsilon = mean(min(tD, [], 2))
+        tD += np.diag(np.matrix(np.ones(len(tD)) * np.inf))
+        epsilon = np.mean(min(tD, [], 2))
 
-        adjMat = exp(-np.square(tD) / np.square(epsilon))
+        adjMat = np.exp(-np.square(tD) / np.square(epsilon))
 
-        RCell = [[None] * len(pa.R) for n in len(pa.R[0])]
-
+        RCell = [[None] * len(pa[1]) for n in len(pa[1][0])]
+        
         for j in range(1, len(RCell)):
             for k in range(j+1, len(RCell[0])):
-                RCell[j][k] = pa.R[j][k]
+                RCell[j][k] = pa[1][j][k]
                 RCell[k][j] = RCell[j][k].transpose()
-        
+        '''
         if type is 'mst':
             for li in range(1, n):
-                [dist, pat] = graphshortestpaths(tree+tree.transpose(), li, base)
+                [dist, pat] = Correspondence.graphshortestpaths(tree+tree.transpose(), li, base)
                 P = identity(N)
                 R = np.identity(3)
                 for lj in range(2, len(pat)):
                     if pat[lj - 1] > pat(lj):
-                        P = np.matmul(P, pa.P[pat[lj], pat[lj-1]])
-                        R = np.matmul(pa.R[pat[lj], pat[lj-1], R)
+                        P = np.matmul(P, pa[2][pat[lj], pat[lj-1]])
+                        R = np.matmul(pa[1][pat[lj], pat[lj-1]], R)
                     else:
-                        P = np.matmul(P, pa.P[pat[lj-1], pat[lj]])
-                        R = np.matmul(pa.R[pat[lj-1], pat[lj], R)
+                        P = np.matmul(P, pa[2][pat[lj-1], pat[lj]])
+                        R = np.matmul(pa[1][pat[lj-1], pat[lj]], R)
                 retR[li] = R
                 retP[li] = P
-        return [retR, retP]
-                
-
-    @staticmethod
-    '''
-    returns a [dist, pat] object with dist (double of distance between index and reference) and path (1xN vector representing path from reference->index)
-    '''
-    def graphshortestpaths(graph, index, reference):
-        [dist_matrix, predecessors] = shortest_path(graph, return_predecessors=True)
-        dist = dist_matrix[reference, index]
-        pat= getpath(predecessors, index, reference)
-        return [dist, pat]
+        return [retR, retP]                
 
     @staticmethod
     def getpath(predecessors, index, reference):

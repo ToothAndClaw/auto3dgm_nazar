@@ -22,7 +22,7 @@ class Correspondence:
     
     def __init__(self, meshes, globalize=1, mirror=0, initial_alignment=None):
         #assumes that meshes is an ordered list of meshes
-        self.globalize=globalize
+        self.globalizeparam=globalize
         self.mirror=mirror
         self.meshes=meshes
         self.initial_alignment=initial_alignment
@@ -97,7 +97,7 @@ class Correspondence:
         '''
         [dist_matrix, predecessors] = shortest_path(graph, return_predecessors=True)
         dist = dist_matrix[reference, index]
-        pat= getpath(predecessors, index, reference)
+        pat = Correspondence.getpath(predecessors, index, reference)
         return [dist, pat]
 
     @staticmethod

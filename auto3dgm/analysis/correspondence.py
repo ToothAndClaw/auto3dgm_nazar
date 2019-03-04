@@ -51,8 +51,9 @@ class Correspondence:
             self.p_ret[key[0]][key[1]] = results_dict[key]['p']
             self.r_ret[key[0]][key[1]] = results_dict[key]['r']
 
-        if globalize:
+        if self.globalizeparam:
             self.mst_matrix = Correspondence.find_mst(self.d_ret)
+            self.globalized_alignment = self.globalize([self.d_ret, self.r_ret, self.p_ret], self.mst_matrix)
 
 
     def generate_job_data(self):
@@ -101,7 +102,7 @@ class Correspondence:
         return [dist, pat]
 
     @staticmethod
-    def globalize(pa, tree, base, type='mst'):
+    def globalize(pa, tree, base=1, type='mst'):
         '''
         takes a pairwise alignment (pa) formatted as a 3-entry array [D, R, P] and a tree (NP-matrix) and returns
         the global alignment obtained by propagating the tree as a list

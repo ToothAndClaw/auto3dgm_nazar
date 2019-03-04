@@ -12,8 +12,10 @@ class Mesh:
         center.SetInputData(vtk_mesh)
         center.SetUseScalarsAsWeights(False)
         center.Update()
+        self.old_centerpoint = center.getCenter()
         self.centerpoint = center.GetCenter()
-
+        self.old_polydata = vtk_mesh #I think that I'm being passed a PolyData now, instead of a vtk_mesh
+        self.old_scale = np.linalg.norm(vtk_to_numpy(vtk_mesh.GetPoints().GetData()), 'fro')
         transform = vtk.vtkTransform()
         transform.Translate(-self.centerpoint[0], -self.centerpoint[1], -self.centerpoint[2])
         transformt = vtk.vtkTransformPolyDataFilter()
@@ -108,7 +110,6 @@ class Mesh:
         self.polydata = transformt.GetOutput()
         
         return self.polydata
-
 
     
 def isValidRotation(arr):

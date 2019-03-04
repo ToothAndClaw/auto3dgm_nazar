@@ -14,7 +14,7 @@ from auto3dgm.jobrun.job import Job
 
 class Correspondence:
     #params: self,
-    #meshes: either a mesh object or a list or a dictionary of mesh objects
+    #meshes: either a mesh object or a list (should be list) or a dictionary of mesh objects
     #meshes: a list of meshes 
     #globalize: flag for performing globalized pairwise alignment (default:yes)
     #mirror: flag for allowing mirrored meshes (default: no)
@@ -60,8 +60,8 @@ class Correspondence:
         for first in self.meshes:
             for second in self.meshes:
                 if not Correspondence.has_pair(first, second, ret):
-                    val = Correspondence.dict_val_gen(self.meshes.index(first), self.meshes.index(second), first, second)
-                    toopl = (self.meshes.index(first), self.meshes.index(second))
+                    val = Correspondence.dict_val_gen(self.meshes[first], self.meshes[second], first, second)
+                    toopl = (self.meshes[first], self.meshes[second])
                     ret[toopl] = val
         return ret
 
@@ -139,7 +139,7 @@ class Correspondence:
                 P = identity(N)
                 R = np.identity(3)
                 for lj in range(2, len(pat)):
-                    if pat[lj - 1] > pat(lj):
+                    if pat[lj - 1] > pat[lj]:
                         P = np.matmul(P, pa[2][pat[lj], pat[lj-1]])
                         R = np.matmul(pa[1][pat[lj], pat[lj-1]], R)
                     else:

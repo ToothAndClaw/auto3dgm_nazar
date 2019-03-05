@@ -66,6 +66,12 @@ class Correspondence:
                     ret[toopl] = val
         return ret
 
+    def generate_params(self):
+        return {'mirror': self.mirror, 'inital_alignment': self.initial_alignment}
+
+    def generate_func(self):
+        return self.initial_alignment
+
 
     @staticmethod
     def dict_val_gen(firstindex, secondindex, first, second):
@@ -78,12 +84,6 @@ class Correspondence:
         if (str1 in dictionary.keys()) or (str2 in dictionary.keys()):
             return True
         return False
-
-    def generate_params(self):
-        return {'mirror': self.mirror, 'inital_alignment': self.initial_alignment}
-
-    def generate_func(self):
-        return self.initial_alignment
 
     @staticmethod
     def find_mst(distance_matrix):
@@ -167,7 +167,6 @@ class Correspondence:
     # Computes the principal components of two meshes and all possible rotations of the 3-axes)
     # params: mesh1, mesh2 meshes that have vertices that are 3 x n matrices
     #        mirror: a flag for whether or not mirror images of the shapes should be considered
-
     def principal_component_alignment(mesh1, mesh2, mirror):
         X = mesh1.vertices.T
         Y = mesh2.vertices.T
@@ -195,8 +194,8 @@ class Correspondence:
     # Mesh 1 is used as the reference
     # params: mesh1, mesh2 meshes that have vertices that are 3 x n matrices
     #        mirror: a flag for whether or not mirror images of the shapes should be considered
-    def best_pairwise_PCA_alignment(mesh1, mesh2, self):
-        R = self.principal_component_alignment(mesh1, mesh2, self.mirror)
+    def best_pairwise_PCA_alignment(mesh1, mesh2, mirror):
+        R = Correspondence.principal_component_alignment(mesh1, mesh2, mirror)
         permutations = []
         for rot, i in zip(R, range(len(R))):
             min_cost = np.ones(len(R)) * np.inf
@@ -212,8 +211,6 @@ class Correspondence:
 
         return best_permutation, best_rot
 
-
-
     @staticmethod
     # Returns the meshed aligned by the initial PCA component pairing.
     # Everything is aligned against the mesh specified by the reference_index
@@ -225,27 +222,28 @@ class Correspondence:
         return Rotations
 
     @staticmethod
-    def locgpd(self,mesh1, mesh2, R_0, M_0, max_iter):
-
-        best_permutation, best_rot = self.best_pairwise_PCA_alignment(mesh1, mesh2,self)
+    # Computes the Local Generalized Procrustes Distance between meshes.
+    # NOTE: Params R_0, M_0 needs specification.
+    def locgpd(mesh1, mesh2, R_0, M_0, max_iter, mirror):
+        # best_permutation and best_rot come from PCA
+        best_permutation, best_rot = Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2, mirror)
 
         if R_0 != 0:
             best_rot = R_0
 
-        V1_sub = mesh1.vertices.T
-        V2_sub = mesh2.vertices.T
-
-        newV2_sub = np.dot(best_rot.T, V2_sub)
+        V1 = mesh1.vertices.T
+        V2 = mesh2.vertices.T
+        newV2 = np.dot(best_rot.T, V2)
 
         i = 0
         while True:
-            newV2_sub = newV2_sub[:, best_permutation]
+            newV2 = newV2[:, best_permutation]
             #  Do Kabsch
-            cur_rot = self.Kabsch(newV2_sub.T, V1_sub.T)
-            newV2_sub = np.dot(cur_rot.T, newV2_sub)
-            print("after Kab cost = ", np.linalg.norm(V1_sub - newV2_sub))
+            cur_rot = Correspondence.Kabsch(newV2.T, V1.T)
+            newV2 = np.dot(cur_rot.T, newV2)
+            print("after Kab cost = ", np.linalg.norm(V1 - newV2))
             # Do Hungary
-            cur_cost = distance_matrix(V1_sub.T, newV2_sub.T)
+            cur_cost = distance_matrix(V1.T, newV2.T)
             cur_V1_ind, cur_permutation = Hungary(cur_cost)
             # print(cur_permutation)
             print("after Hungary cost = ", np.sqrt(np.sum(cur_cost[cur_V1_ind, cur_permutation] ** 2)))
@@ -263,17 +261,18 @@ class Correspondence:
         d = np.sum((cur_permutation - best_permutation))
         Rotate = best_rot
         Permutate = best_permutation
-        gamma = 1.5 * self.ltwoinf(V1_sub - newV2_sub)
+        gamma = 1.5 * Correspondence.ltwoinf(V1 - newV2)
 
         return d, Rotate, Permutate, gamma
 
-    def ltwoinf(self,X):
+    @staticmethod
+    def ltwoinf(X):
         """l2-inf norm of x, i.e.the maximum 12 norm of the columns of x"""
         d = np.sqrt(max(np.square(X).sum(axis=0)))
         return d
 
-
-    def Kabsch(self,A, B):
+    @staticmethod
+    def Kabsch(A, B):
         assert len(A) == len(B)
 
         N = A.shape[0]  # total points

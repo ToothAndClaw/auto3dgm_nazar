@@ -1,23 +1,25 @@
-import glob
+from os import listdir
+from os.path import isfile, splitext, join
 from auto3dgm.mesh.meshfactory import MeshFactory 
 from auto3dgm.dataset.datasetcollection import DatasetCollection
 from auto3dgm.mesh.subsample import Subsample 
 from numpy import empty
+
 class DatasetFactory(object):
+    __ftypes = ['.ply', '.obj', '.stl', '.off']
     #params: directory string
     #params: filetype
     @staticmethod
-    def ds_from_dir(directorystring,ftype='ply'):
-        path=directorystring
-        searchstring=path+'*'+'.'+ftype
-        files=glob.glob(searchstring)
+    def ds_from_dir(dir_path, center_scale=False):
+        c = [join(dir_path, x) for x in listdir(dir_path)]
+        files = [f for f in c if isfile(f) and splitext(f)[1] in DatasetFactory.__ftypes]
         if not files:
-            msg = 'No .'+ftype+' files were found in '+path
+            msg = 'No appropriate files were found in '+dir_path
             raise OSError(msg)
         meshes=[]
         mesheslist=[]
         for file in files: 
-            meshes.append(MeshFactory.mesh_from_file(file))
+            meshes.append(MeshFactory.mesh_from_file(file, center_scale))
         mesheslist.append(meshes)
         return(DatasetCollection(datasets=mesheslist))
     #params: filelist: a list of files

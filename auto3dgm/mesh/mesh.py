@@ -18,7 +18,7 @@ class Mesh:
 
         if center_scale:
             transform = vtk.vtkTransform()
-            transform.Translate(-self.centerpoint[0], -self.centerpoint[1], -self.centerpoint[2])
+            transform.Translate(-self.centerpoint()[0], -self.centerpoint()[1], -self.centerpoint()[2])
             transformt = vtk.vtkTransformPolyDataFilter()
             transformt.SetInputData(vtk_mesh)
             transformt.SetTransform(transform)

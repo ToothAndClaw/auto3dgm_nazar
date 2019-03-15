@@ -59,11 +59,14 @@ class Correspondence:
     def generate_job_data(self):
         ret = {}
         for first in self.meshes:
+            ret[first.name] = {"mesh": first}
+            '''
             for second in self.meshes:
                 if not Correspondence.has_pair(first, second, ret):
                     val = Correspondence.dict_val_gen(self.meshes[first], self.meshes[second], first, second)
                     toopl = (self.meshes[first], self.meshes[second])
                     ret[toopl] = val
+                '''
         return ret
 
     def generate_params(self):

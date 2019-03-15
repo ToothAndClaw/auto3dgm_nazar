@@ -8,11 +8,13 @@ class Mesh:
     #params: self, and a VTK Object called vtk_mesh
     def __init__(self, vtk_mesh, center_scale=False, name=None):
         center = vtk.vtkCenterOfMass()
-        print(type(vtk_mesh))
         center.SetInputData(vtk_mesh)
         center.SetUseScalarsAsWeights(False)
         center.Update()
-        self.centerpoint = center.GetCenter()
+        self.old_centerpoint = center.getCenter()
+        self.centerpoint = center.GetCenter
+        self.old_polydata = vtk_mesh #I think that I'm being passed a PolyData now, instead of a vtk_mesh
+        self.old_scale = np.linalg.norm(vtk_to_numpy(vtk_mesh.GetPoints().GetData()), 'fro')
 
         if center_scale:
             transform = vtk.vtkTransform()
@@ -111,7 +113,6 @@ class Mesh:
         self.polydata = transformt.GetOutput()
         
         return self.polydata
-
 
     
 def isValidRotation(arr):

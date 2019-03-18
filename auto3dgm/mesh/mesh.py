@@ -12,7 +12,7 @@ class Mesh:
         center.SetUseScalarsAsWeights(False)
         center.Update()
         self.old_centerpoint = center.GetCenter()
-        self.centerpoint = center.GetCenter
+        self.centerpoint = center.GetCenter()
         self.old_polydata = vtk_mesh #I think that I'm being passed a PolyData now, instead of a vtk_mesh
         self.old_scale = np.linalg.norm(vtk_to_numpy(vtk_mesh.GetPoints().GetData()), 'fro')
 

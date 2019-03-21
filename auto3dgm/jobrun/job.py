@@ -5,9 +5,9 @@ class Job(object):
     {
     ‘data’: 
         {
-        ‘analysis_1’: {‘mesh’: mesh1}, 
-        ‘analysis_2’: {‘mesh’: mesh2}, 
-        ‘analysis_3’: {‘mesh’: mesh3}
+        ‘(0, 1)’: {‘mesh0_name’: mesh0, 'mesh1_name': mesh1}, 
+        ‘(0, 2)’: {‘mesh0_name’: mesh0, 'mesh2_name': mesh2}, 
+        ‘(0, 3)’: {‘mesh0_name’: mesh0, 'mesh3_name': mesh3}
         }, 
     ‘params’: 
         {
@@ -67,7 +67,8 @@ class Job(object):
             return True
 
     def __validate_data(self, data):
-        """data must be dict, every element must be dict with >=1 element"""
+        """data must be dict, every element must be dict with >=1 element
+        I don't believe that data[key1][key2] should have 1 element, I think we should enforce >1"""
         if (not data 
             or not isinstance(data, dict) 
             or not len(data)

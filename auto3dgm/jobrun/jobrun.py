@@ -47,6 +47,7 @@ class JobRun(object):
 
         results_dict = {}
         for k, v in self.job.data.items():
+            """here, key is a tuple representing the initial indices of the mesh_list from Correspondence"""
             results_dict[k] = self.job.func(**v, **self.job.params)
 
         job_dict['output'] = results_dict

@@ -58,15 +58,13 @@ class Correspondence:
 
     def generate_job_data(self):
         ret = {}
-        for first in self.meshes:
-            ret[first.name] = {"mesh": first}
-            '''
-            for second in self.meshes:
-                if not Correspondence.has_pair(first, second, ret):
-                    val = Correspondence.dict_val_gen(self.meshes[first], self.meshes[second], first, second)
-                    toopl = (self.meshes[first], self.meshes[second])
+        for indexf, first in enumerate(self.meshes):
+            for indexs, second in enumerate(self.meshes):
+                if not Correspondence.has_pair(indexf, indexs, ret):
+                    val = Correspondence.dict_val_gen(first.name, second.name, first, second)
+                    toopl = (indexf, indexs)
                     ret[toopl] = val
-                '''
+                
         return ret
 
     def generate_params(self):
@@ -77,14 +75,14 @@ class Correspondence:
 
 
     @staticmethod
-    def dict_val_gen(firstindex, secondindex, first, second):
-        return {firstindex: first, secondindex: second}
+    def dict_val_gen(firstname, secondname, first, second):
+        return {firstname: first, secondname: second}
 
     @staticmethod
     def has_pair(key1, key2, dictionary):
-        str1 = key1 + key2
-        str2 = key2 + key1
-        if (str1 in dictionary.keys()) or (str2 in dictionary.keys()):
+        tooplf = (key1, key2)
+        toopls = (key2, key1)
+        if (tooplf in dictionary.keys()) or (toopls in dictionary.keys()):
             return True
         return False
 

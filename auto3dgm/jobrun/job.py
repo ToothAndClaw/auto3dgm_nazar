@@ -68,7 +68,8 @@ class Job(object):
 
     def __validate_data(self, data):
         """data must be dict, every element must be dict with >=1 element
-        I don't believe that data[key1][key2] should have 1 element, I think we should enforce >1"""
+        I don't believe that data[key1][key2] should have 1 element, I think we should enforce >1, 
+        since Corresponence never passes a single data[k1][k2] element"""
         if (not data 
             or not isinstance(data, dict) 
             or not len(data)

@@ -6,22 +6,27 @@ import math
 
 class Mesh:
     #params: self, and a VTK Object called vtk_mesh
-    def __init__(self, vtk_mesh, name):
+    def __init__(self, vtk_mesh, center_scale=False, name=None):
         center = vtk.vtkCenterOfMass()
-        print(type(vtk_mesh))
         center.SetInputData(vtk_mesh)
         center.SetUseScalarsAsWeights(False)
         center.Update()
+        self.old_centerpoint = center.GetCenter()
         self.centerpoint = center.GetCenter()
+        self.old_polydata = vtk_mesh #I think that I'm being passed a PolyData now, instead of a vtk_mesh
+        self.old_scale = np.linalg.norm(vtk_to_numpy(vtk_mesh.GetPoints().GetData()), 'fro')
 
-        transform = vtk.vtkTransform()
-        transform.Translate(-self.centerpoint[0], -self.centerpoint[1], -self.centerpoint[2])
-        transformt = vtk.vtkTransformPolyDataFilter()
-        transformt.SetInputData(vtk_mesh)
-        transformt.SetTransform(transform)
-        transformt.Update()
+        if center_scale:
+            transform = vtk.vtkTransform()
+            transform.Translate(-self.centerpoint[0], -self.centerpoint[1], -self.centerpoint[2])
+            transformt = vtk.vtkTransformPolyDataFilter()
+            transformt.SetInputData(vtk_mesh)
+            transformt.SetTransform(transform)
+            transformt.Update()
+            self.polydata = transformt.GetOutput()
+        else:
+            self.polydata = vtk_mesh
 
-        self.polydata = transformt.GetOutput()
         self.name = name
 
     ''' we don't have to use getters like this, but using it in this case bc 1) 
@@ -108,7 +113,6 @@ class Mesh:
         self.polydata = transformt.GetOutput()
         
         return self.polydata
-
 
     
 def isValidRotation(arr):

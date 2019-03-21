@@ -23,13 +23,10 @@ mesh1=T
 mesh2=D
 a=[T,D]
 
-kor1=Correspondence(a, mirror=0) 
+BB=Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2,0)
+AA=Correspondence.locgpd(mesh1,mesh2,0,0,5,0)
 
-
-BB=kor1.best_pairwise_PCA_alignment(mesh1, mesh2,kor1)
-AA=kor1.locgpd(kor1,mesh1,mesh2,0,0,5)
-
-BB
+print(BB)
 '''
 In [36]: BB
 Out[36]: 
@@ -39,7 +36,7 @@ Out[36]:
         [  1.00000000e+00,  -1.38777878e-17,   1.66533454e-16]]))
 
 '''
-AA[1]
+print(AA[1])
 '''
 Out[40]: 
 array([[  4.49640325e-15,   1.00000000e+00,  -3.87190280e-15],
@@ -52,8 +49,8 @@ array([[  4.49640325e-15,   1.00000000e+00,  -3.87190280e-15],
 mesh1=MeshFactory.mesh_from_data(A)
 mesh2=MeshFactory.mesh_from_data(B)
 
-BB=kor1.best_pairwise_PCA_alignment(mesh1, mesh2,kor1)
-BB
+BB=Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2,0)
+print(BB)
 '''
 Out[45]: 
 (array([3, 1, 2, 0]), array([[ 0.18660992, -0.95001991, -0.25027765],
@@ -62,9 +59,9 @@ Out[45]:
 
 '''
 
-AA=kor1.locgpd(kor1,mesh1,mesh2,0,0,5)
+AA=Correspondence.locgpd(mesh1,mesh2,0,0,5,0)
 
-AA[1]
+print(AA[1])
 '''
 Out[46]: 
 array([[ 0.71252281,  0.70142588,  0.01769116],

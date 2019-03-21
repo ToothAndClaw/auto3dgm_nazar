@@ -29,7 +29,7 @@ class Correspondence:
         n = len(meshes)
 
         job_data = self.generate_job_data()
-        job_params = self.generate_params()
+        job_params = self.generate_params(initial_alignment)
         job_func = self.generate_func()
 
         new_job = Job(data=job_data, params=job_params, func=job_func)
@@ -67,8 +67,11 @@ class Correspondence:
                 
         return ret
 
-    def generate_params(self):
-        return {'mirror': self.mirror, 'inital_alignment': self.initial_alignment}
+    def generate_params(self, is_aligned):
+        if is_aligned:
+            return {'inital_alignment': self.initial_alignment}
+        else:
+            return {'mirror': self.mirror}
 
     def generate_func(self):
         return self.initial_alignment

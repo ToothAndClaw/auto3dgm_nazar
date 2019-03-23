@@ -29,7 +29,7 @@ class Correspondence:
         n = len(meshes)
 
         job_data = self.generate_job_data()
-        job_params = self.generate_params(initial_alignment)
+        job_params = self.generate_params()
         job_func = self.generate_func()
 
         new_job = Job(data=job_data, params=job_params, func=job_func)
@@ -61,25 +61,22 @@ class Correspondence:
         for indexf, first in enumerate(self.meshes):
             for indexs, second in enumerate(self.meshes):
                 if not Correspondence.has_pair(indexf, indexs, ret):
-                    val = Correspondence.dict_val_gen(first.name, second.name, first, second)
+                    val = Correspondence.dict_val_gen(first, second, R=self.initial_alignment['r'][indexf][indexs])
                     toopl = (indexf, indexs)
                     ret[toopl] = val
                 
         return ret
 
-    def generate_params(self, is_aligned):
-        if is_aligned:
-            return {'inital_alignment': self.initial_alignment}
-        else:
+    def generate_params(self):
             return {'mirror': self.mirror}
 
     def generate_func(self):
-        return self.initial_alignment
+        return self.align
 
 
     @staticmethod
-    def dict_val_gen(firstname, secondname, first, second):
-        return {firstname: first, secondname: second}
+    def dict_val_gen(first, second, R=None):
+        return {'mesh1': first, 'mesh2': second, 'R': R}
 
     @staticmethod
     def has_pair(key1, key2, dictionary):
@@ -228,7 +225,7 @@ class Correspondence:
     @staticmethod
     # Computes the Local Generalized Procrustes Distance between meshes.
     # NOTE: Params R_0, M_0 needs specification.
-    def locgpd(mesh1, mesh2, R_0, M_0, max_iter, mirror):
+    def locgpd(mesh1, mesh2, R_0, M_0, max_iter=1000, mirror=False):
         # best_permutation and best_rot come from PCA
         best_permutation, best_rot = Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2, mirror)
 
@@ -300,3 +297,9 @@ class Correspondence:
         #     Vt[-1,:] *= -1
         #     R = Vt.T * U.T
         return R
+
+    @staticmethod
+    def align(mesh1, mesh2, mirror, R=None):
+        if not R:
+            R = Correspondence.best_pairwise_PCA_alignment(mesh1=mesh1, mesh2=mesh2, mirror=mirror)[1]
+        return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=R, mirror=mirror)

@@ -5,9 +5,9 @@ class Job(object):
     {
     ‘data’: 
         {
-        ‘(0, 1)’: {‘mesh0_name’: mesh0, 'mesh1_name': mesh1}, 
-        ‘(0, 2)’: {‘mesh0_name’: mesh0, 'mesh2_name': mesh2}, 
-        ‘(0, 3)’: {‘mesh0_name’: mesh0, 'mesh3_name': mesh3}
+        ‘(0, 1)’: {‘mesh1’: mesh0, 'mesh2': mesh1}, 
+        ‘(0, 2)’: {‘mesh1’: mesh0, 'mesh2': mesh2}, 
+        ‘(0, 3)’: {‘mesh1’: mesh0, 'mesh2': mesh3}
         }, 
     ‘params’: 
         {

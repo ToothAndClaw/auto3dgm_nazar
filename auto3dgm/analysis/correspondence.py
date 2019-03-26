@@ -225,8 +225,11 @@ class Correspondence:
     @staticmethod
     # Computes the Local Generalized Procrustes Distance between meshes.
     # NOTE: Params R_0, M_0 needs specification.
-    def locgpd(mesh1, mesh2, R_0, M_0, max_iter=1000, mirror=False):
+    def locgpd(mesh1, mesh2, R_0, M_0=None, max_iter=1000, mirror=False):
         # best_permutation and best_rot come from PCA
+        if M_0 is None:
+            n = len(mesh1.vertices)
+            M_0 = np.ones(n, n)
         best_permutation, best_rot = Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2, mirror)
 
         if R_0 != 0:

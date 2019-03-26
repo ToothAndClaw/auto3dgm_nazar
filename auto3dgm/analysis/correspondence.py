@@ -300,6 +300,7 @@ class Correspondence:
 
     @staticmethod
     def align(mesh1, mesh2, mirror, R=None):
+        n = len(mesh1.vertices)
         if not R:
             R = Correspondence.best_pairwise_PCA_alignment(mesh1=mesh1, mesh2=mesh2, mirror=mirror)[1]
-        return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=R, mirror=mirror)
+        return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=R, M_0=np.ones(n, n), mirror=mirror)

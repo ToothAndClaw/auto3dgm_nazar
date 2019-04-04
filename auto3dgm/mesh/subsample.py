@@ -28,19 +28,74 @@ from scipy.spatial.distance import cdist
 from auto3dgm.mesh.mesh import Mesh
 from auto3dgm.mesh.meshfactory import MeshFactory
 import numpy as np
+from auto3dgm import jobrun
+from auto3dgm.jobrun import jobrun
+from auto3dgm.jobrun import job
+from auto3dgm.jobrun.jobrun import JobRun
+from auto3dgm.jobrun.job import Job
 
 class Subsample:
-    def __init__(self,numberofpoints,subsamplemethod,setofmeshes):
-        self.pts=numberofpoints
-        self.subsmpl=subsamplemethod
-        self.meshset=setofmeshes
+    def __init__(self, pointNumber=None, method=None, meshes=None):
+        self.pointNumber=pointNumber
+        self.method=method
+        self.meshes=meshes
+        ret = {}
+        for singlePoint in self.pointNumber:
+            #assumes all entries in list of pointNumbers are unique
+            job = self.prepare_analysis(point_number=singlePoint)
+            results = self.export_analysis(job=job)
+            ret[singlePoint] = {'output': results}
 
-    def prepare_analysis(self):
-        pass
-         
+        return ret
+
+
+    def prepare_analysis(self, point_number=None):
+        #Create Job
+        job_data = Subsample.generate_data(meshes=self.meshes)
+        job_params = Subsample.generate_params(point_number=point_number, subsample_method=self.method)
+        job_func = self.generate_func()
+        return Job(data=job_data, params=job_params, func=job_func)
+
+
+    @staticmethod    
+    def generate_data(meshes=None):
+        '''
+        {
+        ‘analysis_0’: {‘mesh’: mesh0}, 
+        ‘analysis_1’: {‘mesh’: mesh1}, 
+        ‘analysis_2’: {‘mesh’: mesh2}
+        }, 
+        '''
+        ret = {}
+        s = 'analysis_'
+        for index, mesh in enumerate(meshes):
+            temp_s = s + str(index)
+            ret[temp_s] = {'mesh': mesh}
+        return ret
+
+    @staticmethod
+    def generate_params(point_number=None, subsample_method=None):
+        #dict of params, issue with the fucntion reference?
+        '''
+        {
+            'n': 200, 
+            'subsample_method': 'GPR'
+        }
+        '''
+        ret = {}
+        #using 'n' instead of 'point_number' because i suspect an issue with named params
+        ret['n'] = point_number
+        ret['subsample_method'] = subsample_method
+        return ret
+
+    def generate_func(self):
+        return self.far_point_subsample
+
     ## class method
-    def export_analysis(job_run_object):
-        pass
+    @staticmethod
+    def export_analysis(job=None):
+        jobrun = JobRun(job=job)
+        return jobrun.execute_jobs()
 
     @staticmethod
     def far_point_subsample(mesh, n, seed=empty([0,0])):

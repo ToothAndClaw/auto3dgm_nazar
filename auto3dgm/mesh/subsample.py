@@ -42,18 +42,18 @@ class Subsample:
         ret = {}
         for singlePoint in self.pointNumber:
             #assumes all entries in list of pointNumbers are unique
-            job = self.prepare_analysis(point_number=singlePoint)
+            job = self.prepare_analysis(point_number=singlePoint, method=method)
             results = self.export_analysis(job=job)
             ret[singlePoint] = {'output': results}
 
         return ret
 
 
-    def prepare_analysis(self, point_number=None):
+    def prepare_analysis(self, point_number=None, method='FPS'):
         #Create Job
         job_data = Subsample.generate_data(meshes=self.meshes)
         job_params = Subsample.generate_params(point_number=point_number, subsample_method=self.method)
-        job_func = self.generate_func()
+        job_func = self.generate_func(method=method)
         return Job(data=job_data, params=job_params, func=job_func)
 
 
@@ -88,8 +88,11 @@ class Subsample:
         ret['subsample_method'] = subsample_method
         return ret
 
-    def generate_func(self):
-        return self.far_point_subsample
+    def generate_func(self, func='FPS'):
+        if func == 'FPS':
+            return self.far_point_subsample
+        if func == 'GPL':
+            return self.gpl_subsample
 
     ## class method
     @staticmethod

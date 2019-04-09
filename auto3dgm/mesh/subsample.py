@@ -40,52 +40,62 @@ class Subsample:
         self.method=method
         self.meshes=meshes
         ret = {}
+        seed = {}
         for singlePoint in self.pointNumber:
             #assumes all entries in list of pointNumbers are unique
-            job = self.prepare_analysis(point_number=singlePoint, method=method)
+            job = self.prepare_analysis(point_number=singlePoint, method=method, seed=seed)
             results = self.export_analysis(job=job)
             ret[singlePoint] = {'output': results}
+            for key in results:
+                #keys should be mesh names
+                seed[key] = results[key].vertices
 
         return ret
 
 
-    def prepare_analysis(self, point_number=None, method='FPS'):
+    def prepare_analysis(self, point_number=None, method='FPS', seed=None):
         #Create Job
         job_data = Subsample.generate_data(meshes=self.meshes)
-        job_params = Subsample.generate_params(point_number=point_number, subsample_method=self.method)
+        job_params = Subsample.generate_params(point_number=point_number, subsample_method=self.method, seed=seed)
         job_func = self.generate_func(method=method)
         return Job(data=job_data, params=job_params, func=job_func)
 
 
     @staticmethod    
     def generate_data(meshes=None):
+        #mesh name or index value or something like that
         '''
         {
-        ‘analysis_0’: {‘mesh’: mesh0}, 
-        ‘analysis_1’: {‘mesh’: mesh1}, 
-        ‘analysis_2’: {‘mesh’: mesh2}
+        'mesh0.name': {‘mesh’: mesh0}, 
+        'mesh1.name': {‘mesh’: mesh1}, 
+        'mesh2.name': {‘mesh’: mesh2}
         }, 
         '''
         ret = {}
         s = 'analysis_'
         for index, mesh in enumerate(meshes):
-            temp_s = s + str(index)
-            ret[temp_s] = {'mesh': mesh}
+            #temp_s = s + str(index)
+            ret[mesh.name] = {'mesh': mesh}
         return ret
 
     @staticmethod
-    def generate_params(point_number=None, subsample_method=None):
+    def generate_params(point_number=None, subsample_method=None, seed=None):
         #dict of params, issue with the fucntion reference?
         '''
         {
             'n': 200, 
-            'subsample_method': 'GPR'
+            'seed': {
+                mesh1.name: previous subsample output for mesh1
+                mesh2.name: previous subsample output for mesh2
+                }
         }
         '''
         ret = {}
-        #using 'n' instead of 'point_number' because i suspect an issue with named params
         ret['n'] = point_number
-        ret['subsample_method'] = subsample_method
+        if seed is not None:
+            ret['seed'] = seed
+        else:
+            ret['seed'] = empty([0,0])
         return ret
 
     def generate_func(self, func='FPS'):
@@ -101,16 +111,21 @@ class Subsample:
         return jobrun.execute_jobs()
 
     @staticmethod
-    def far_point_subsample(mesh, n, seed=empty([0,0])):
+    def far_point_subsample(mesh, n, seed=None):
+        # seed should be a list of points 3x previous n
+        # return val is mesh object that I wrote
+        # seed = previous mesh.verticies
+        #edited this method so that the correct previous seed is extracted from the params dict, since the architecture forces the entire dict to be passed down
         v = mesh.vertices
-        if n > v.shape[0] or n < seed.shape[0]:
-            raise ValueError('n larger than number of vertices or smaller than number of seed points')
-        if isinstance(seed, ndarray) and seed.size:
+        seed_t = seed[mesh.name]
+        if n > v.shape[0] or n < seed_t.shape[0]:
+            raise ValueError('n larger than number of vertices or smaller than number of seed_t points')
+        if isinstance(seed_t, ndarray) and seed_t.size:
             if v.shape[1] == 3 and v.ndim == 2:
                 # are s in v (or close enough?)
-                if all([any(all(isclose(x, v), 1)) for x in seed]):
-                    # get ind for seed points
-                    seedint = [where(all(isclose(x, v), axis=1))[0][0] for x in seed]
+                if all([any(all(isclose(x, v), 1)) for x in seed_t]):
+                    # get ind for seed_t points
+                    seedint = [where(all(isclose(x, v), axis=1))[0][0] for x in seed_t]
             else:
                 raise ValueError('seed improperly formed, expecting n x 3 array')
         else:

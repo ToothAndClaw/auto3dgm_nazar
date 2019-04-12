@@ -38,14 +38,14 @@ class Job(object):
             if 'func' in job_dict and self.__validate_func(job_dict['func']):
                 self.func = job_dict['func']
 
-    def import_args(data={}, params={}, func={}):
-        if data and __validate_data(data):
+    def import_args(self, data={}, params={}, func={}):
+        if data and self.__validate_data(data):
             self.data = data
             
-        if params and __validate_params(params):
+        if params and self.__validate_params(params):
             self.params = params
         
-        if func and __validate_func(func):
+        if func and self.__validate_func(func):
             self.func = func
         
     def as_dict(self):

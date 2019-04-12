@@ -3,6 +3,7 @@ from vtk.util.numpy_support import vtk_to_numpy # calling vtk_to_numpy doesn't w
 import vtk
 import math
 #import vtkCenterOfMass
+#from pdb import set_trace as bp
 
 class Mesh:
     #params: self, and a VTK Object called vtk_mesh
@@ -18,6 +19,7 @@ class Mesh:
 
         if center_scale:
             transform = vtk.vtkTransform()
+            #bp()
             transform.Translate(-self.centerpoint[0], -self.centerpoint[1], -self.centerpoint[2])
             transformt = vtk.vtkTransformPolyDataFilter()
             transformt.SetInputData(vtk_mesh)

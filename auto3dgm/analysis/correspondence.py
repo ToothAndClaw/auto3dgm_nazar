@@ -58,33 +58,31 @@ class Correspondence:
 
     def generate_job_data(self):
         ret = {}
-        for first in self.meshes:
-            ret[first.name] = {"mesh": first}
-            '''
-            for second in self.meshes:
-                if not Correspondence.has_pair(first, second, ret):
-                    val = Correspondence.dict_val_gen(self.meshes[first], self.meshes[second], first, second)
-                    toopl = (self.meshes[first], self.meshes[second])
+        for indexf, first in enumerate(self.meshes):
+            for indexs, second in enumerate(self.meshes):
+                if not Correspondence.has_pair(indexf, indexs, ret):
+                    val = Correspondence.dict_val_gen(first, second, R=self.initial_alignment['r'][indexf][indexs])
+                    toopl = (indexf, indexs)
                     ret[toopl] = val
-                '''
+                
         return ret
 
     def generate_params(self):
-        return {'mirror': self.mirror, 'inital_alignment': self.initial_alignment}
+            return {'mirror': self.mirror}
 
     def generate_func(self):
-        return self.initial_alignment
+        return self.align
 
 
     @staticmethod
-    def dict_val_gen(firstindex, secondindex, first, second):
-        return {firstindex: first, secondindex: second}
+    def dict_val_gen(first, second, R=None):
+        return {'mesh1': first, 'mesh2': second, 'R': R}
 
     @staticmethod
     def has_pair(key1, key2, dictionary):
-        str1 = key1 + key2
-        str2 = key2 + key1
-        if (str1 in dictionary.keys()) or (str2 in dictionary.keys()):
+        tooplf = (key1, key2)
+        toopls = (key2, key1)
+        if (tooplf in dictionary.keys()) or (toopls in dictionary.keys()):
             return True
         return False
 
@@ -227,8 +225,11 @@ class Correspondence:
     @staticmethod
     # Computes the Local Generalized Procrustes Distance between meshes.
     # NOTE: Params R_0, M_0 needs specification.
-    def locgpd(mesh1, mesh2, R_0, M_0, max_iter, mirror):
+    def locgpd(mesh1, mesh2, R_0, M_0=None, max_iter=1000, mirror=False):
         # best_permutation and best_rot come from PCA
+        if M_0 is None:
+            n = len(mesh1.vertices)
+            M_0 = np.ones(n, n)
         best_permutation, best_rot = Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2, mirror)
 
         if R_0 != 0:
@@ -299,3 +300,10 @@ class Correspondence:
         #     Vt[-1,:] *= -1
         #     R = Vt.T * U.T
         return R
+
+    @staticmethod
+    def align(mesh1, mesh2, mirror, R=None):
+        n = len(mesh1.vertices)
+        if not R:
+            R = Correspondence.best_pairwise_PCA_alignment(mesh1=mesh1, mesh2=mesh2, mirror=mirror)[1]
+        return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=R, M_0=np.ones(n, n), mirror=mirror)

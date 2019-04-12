@@ -29,9 +29,9 @@ class JobRun(object):
     def execute_jobs(self):
         if self.__mode and self.__mode in self.allowed_modes:
             if self.__mode == 'single':
-                return run_single(self)
+                return self.run_single()
             elif self.__mode == 'multi':
-                return run_multi(self)
+                return self.run_multi()
             else:
                 raise ValueError('Unexpected mode: {}'.format(self.__mode))
         else:

@@ -34,33 +34,30 @@ class DatasetCollection:
             #Equally many names and datasets
         self.analysis_sets=dict(zip(analysis_set_names,analysis_sets))
 
-    @staticmethod
+
     def add_dataset(self,dataset,dataset_name):
-        if self.datasets[dataset_name]:
+        if dataset_name in self.datasets:
             msg="The Dataset Collection already contains a dataset with name "+dataset_name
             raise OSError(msg)
         else:
             self.datasets[dataset_name]=dataset
 
-    @staticmethod
     def add_analysis_set(self,analysis_set,analysis_set_name):
-        if self.analysis_sets[analysis_set_name]:
+        if analysis_set_name in self.analysis_sets:
             msg="The Dataset Collection already contains an analysis set with name "+analysis_set_name
             raise OSError(msg)
         else:
             self.analysis_set[analysis_set_name]=analysis_set
 
-    @staticmethod
     def remove_dataset(self,dataset_name):
-        if not self.datasets[dataset_name]:
+        if not dataset_name in self.datasets:
             msg="The Dataset Collection does not contain a dataset named "+dataset_name
             raise OSError(msg)
         else:
             del self.datasets[dataset_name]
 
-    @staticmethod
     def add_analysis_set(self,analysis_set_name):
-        if not self.analysis_sets[analysis_set_name]:
+        if not analysis_set_name in self.analysis_sets:
             msg="The Dataset Collection does not contain a dataset named "+analysis_set_name
             raise OSError(msg)
         else:

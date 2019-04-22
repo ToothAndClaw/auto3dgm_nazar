@@ -8,9 +8,11 @@ from auto3dgm.analysis.correspondence import Correspondence
 
 class Auto3dgm:
 	def __init__(self, config={}, run=True):
+		#TODO I feel like mesh_dir and output_DIR should be input params
 		self.mesh_dir = '' # dir path
 		self.output_dir = '' # dir path
 		self.ss_points_i = 0
+		#TODO: ss_label_i not defined
 		self.ss_label_i = 'subsample_' + str(self.ss_label_i)
 		self.ss_points_f = 0
 		self.ss_label_f = 'subsample_' + str(self.ss_label_f)
@@ -39,11 +41,13 @@ class Auto3dgm:
 		self.__write_output_dirs()
 
 		### DATA LOAD AND SUBSAMPLE
+		#TODO: No ftype param
 		self.dataset = DatasetFactory.ds_from_dir(self.mesh_dir, ftype='ply')
 
 		# need to get both sets of subsample results
 		ss_points = [self.ss_points_i, self.ss_points_f]
-		subsample_res = Subsample(self.dataset['mesh'], ss_points, self.ss_type) # dataset class should eventually support multiple named mesh sets and should be dict-style callable like this for mesh
+		#TODO: Should use named parameters as the constructor for Subsample, I'm not sure what ss_type refers to.
+		subsample_res = Subsample(self.dataset['mesh'], ss_points, self.ss_type) # dataset class should eventually support multiple named mesh sets and should be dict-style callable like this for mesh TODO: Currently does not support multiple named mesh sets, and the param is dataset.meshes
 		ss_meshes_i = subsample_res[ss_points[0]]['output']['results']
 		ss_meshes_f = subsample_res[ss_points[1]]['output']['results']
 

@@ -29,9 +29,9 @@ class JobRun(object):
     def execute_jobs(self):
         if self.__mode and self.__mode in self.allowed_modes:
             if self.__mode == 'single':
-                return run_single(self)
+                return self.run_single()
             elif self.__mode == 'multi':
-                return run_multi(self)
+                return self.run_multi()
             else:
                 raise ValueError('Unexpected mode: {}'.format(self.__mode))
         else:
@@ -48,6 +48,8 @@ class JobRun(object):
         results_dict = {}
         for k, v in self.job.data.items():
             """here, key is a tuple representing the initial indices of the mesh_list from Correspondence"""
+            print("workds")
+            print(self.job.func)
             results_dict[k] = self.job.func(**v, **self.job.params)
 
         job_dict['output'] = results_dict

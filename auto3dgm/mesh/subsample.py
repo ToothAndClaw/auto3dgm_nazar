@@ -57,7 +57,9 @@ class Subsample:
         #Create Job
         job_data = Subsample.generate_data(meshes=self.meshes)
         job_params = Subsample.generate_params(point_number=point_number, subsample_method=self.method, seed=seed)
-        job_func = self.generate_func(method=method)
+        job_func = self.generate_func(func=method)
+        print("mark")
+        print(job_func)
         return Job(data=job_data, params=job_params, func=job_func)
 
 
@@ -99,7 +101,9 @@ class Subsample:
         return ret
 
     def generate_func(self, func='FPS'):
-        if func == 'FPS':
+        print(func)
+        if func is 'FPS' or func is None:
+            print("entered")
             return self.far_point_subsample
         if func == 'GPL':
             return self.gpl_subsample

@@ -48,7 +48,7 @@ class Subsample:
             ret[singlePoint] = {'output': results}
             for key in results['output']:
                 #keys should be mesh names
-                print(results)
+                #print(results)
                 seed[results['output'][key].name] = results['output'][key].vertices
 
         self.ret = ret
@@ -59,8 +59,8 @@ class Subsample:
         job_data = Subsample.generate_data(meshes=self.meshes)
         job_params = Subsample.generate_params(point_number=point_number, subsample_method=self.method, seed=seed, meshes=self.meshes)
         job_func = self.generate_func(func=method)
-        print("mark")
-        print(job_func)
+        #print("mark")
+        #print(job_func)
         return Job(data=job_data, params=job_params, func=job_func)
 
 
@@ -96,8 +96,8 @@ class Subsample:
         ret = {}
         ret['n'] = point_number
         seed_t = {}
-        print("In generate params")
-        print(seed)
+        #print("In generate params")
+        #print(seed)
         for mesh in meshes:
             if mesh.name not in seed.keys():
                 seed_t[mesh.name] = empty([0,0])
@@ -107,9 +107,9 @@ class Subsample:
         return ret
 
     def generate_func(self, func='FPS'):
-        print(func)
+        #print(func)
         if func is 'FPS' or func is None:
-            print("entered")
+            #print("entered")
             return self.far_point_subsample
         if func == 'GPL':
             return self.gpl_subsample
@@ -127,13 +127,13 @@ class Subsample:
         # seed = previous mesh.verticies
         #edited this method so that the correct previous seed is extracted from the params dict, since the architecture forces the entire dict to be passed down
         v = mesh.vertices
-        print(seed)
+        #print(seed)
         seed_t = seed[mesh.name]
         if n > v.shape[0] or n < seed_t.shape[0]:
-            print(n)
-            print(v.shape[0])
-            print(v.shape[1])
-            print(seed_t.shape[0])
+            #print(n)
+            #print(v.shape[0])
+            #print(v.shape[1])
+            #print(seed_t.shape[0])
             raise ValueError('n larger than number of vertices or smaller than number of seed_t points')
         if isinstance(seed_t, ndarray) and seed_t.size:
             if v.shape[1] == 3 and v.ndim == 2:

@@ -47,10 +47,12 @@ class Auto3dgm:
 		# need to get both sets of subsample results
 		ss_points = [self.ss_points_i, self.ss_points_f]
 		#TODO: Should use named parameters as the constructor for Subsample, I'm not sure what ss_type refers to.
+		#TODO: init doesn't return anything, so I've encoded the results dictionary in subsample_res.ret
 		subsample_res = Subsample(self.dataset['mesh'], ss_points, self.ss_type) # dataset class should eventually support multiple named mesh sets and should be dict-style callable like this for mesh TODO: Currently does not support multiple named mesh sets, and the param is dataset.meshes
 		ss_meshes_i = subsample_res[ss_points[0]]['output']['results']
 		ss_meshes_f = subsample_res[ss_points[1]]['output']['results']
 
+		#TODO: Add mesh set doesnt exist as a method. Self.dataset isnt a dataset, its a data set collection, maybe create a method to instantiate a new data set, and add it to the Dataset COllection? THis naming is kind of bad
 		self.dataset.add_mesh_set(self.ss_label_i, ss_meshes_i)
 		self.dataset.add_mesh_set(self.ss_label_f, ss_meshes_f)
 

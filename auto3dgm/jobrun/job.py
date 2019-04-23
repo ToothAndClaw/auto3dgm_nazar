@@ -27,7 +27,7 @@ class Job(object):
         if job_dict:
             self.import_job_dict(job_dict)
         elif data or params or func:
-            print(data)
+            # print(data)
             self.import_args(data=data, params=params, func=func)
 
     def import_job_dict(self, job_dict):

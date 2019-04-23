@@ -61,7 +61,10 @@ class Correspondence:
         for indexf, first in enumerate(self.meshes):
             for indexs, second in enumerate(self.meshes):
                 if not Correspondence.has_pair(indexf, indexs, ret):
-                    val = Correspondence.dict_val_gen(first, second, R=self.initial_alignment['r'][indexf][indexs])
+                    R = None
+                    if self.initial_alignment is not None:
+                        R = self.initial_alignment['r'][indexf][indexs]
+                    val = Correspondence.dict_val_gen(first, second, R=R)
                     toopl = (indexf, indexs)
                     ret[toopl] = val
                 

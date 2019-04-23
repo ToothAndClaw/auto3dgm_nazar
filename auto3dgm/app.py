@@ -8,6 +8,15 @@ from auto3dgm.analysis.correspondence import Correspondence
 
 class Auto3dgm:
 	def __init__(self, config={}, run=True):
+		'''
+		MY TESTED CODE FLOW:
+		import auto3dgm
+		x = auto3dgm.dataset.datasetfactory.DatasetFactory()
+		y = x.ds_from_dir("tests/fixtures")
+		subsample_res = auto3dgm.mesh.subsample.Subsample(pointNumber=[2, 3], meshes=y.datasets[0])
+		mesh_list = list(subsample_res.ret[2]['output']['output'].values())
+		cres = auto3dgm.analysis.correspondence.Correspondence(meshes=mesh_list)
+		'''
 		#TODO I feel like mesh_dir and output_DIR should be input params
 		self.mesh_dir = '' # dir path
 		self.output_dir = '' # dir path
@@ -74,7 +83,7 @@ class Auto3dgm:
 			mirror=self.allow_reflection)
 
 		### EXPORT TODO ###
-		
+
 
 	def validate_parameters(self): # TODO
 		return

@@ -5,6 +5,7 @@ from scipy.optimize import linear_sum_assignment as Hungary
 from scipy.sparse import csr_matrix, identity
 from scipy.sparse.csgraph import minimum_spanning_tree, shortest_path
 import numpy as np
+from pprint import pprint
 from auto3dgm import jobrun
 from auto3dgm.jobrun import jobrun
 from auto3dgm.jobrun import job
@@ -47,9 +48,15 @@ class Correspondence:
 
         for key in results_dict.keys():
             #key will be a tuple
+            print(results_dict)
             self.d_ret[key[0]][key[1]] = results_dict[key]['d']
             self.p_ret[key[0]][key[1]] = results_dict[key]['p']
             self.r_ret[key[0]][key[1]] = results_dict[key]['r']
+        
+        print('+++++')
+        print(self.d_ret)
+        print(self.p_ret)
+        print(self.r_ret)
 
         if self.globalizeparam:
             self.mst_matrix = Correspondence.find_mst(self.d_ret)
@@ -61,7 +68,10 @@ class Correspondence:
         for indexf, first in enumerate(self.meshes):
             for indexs, second in enumerate(self.meshes):
                 if not Correspondence.has_pair(indexf, indexs, ret):
-                    val = Correspondence.dict_val_gen(first, second, R=self.initial_alignment['r'][indexf][indexs])
+                    R = None
+                    if self.initial_alignment is not None:
+                        R = self.initial_alignment['r'][indexf][indexs]
+                    val = Correspondence.dict_val_gen(first, second, R=R)
                     toopl = (indexf, indexs)
                     ret[toopl] = val
                 
@@ -83,7 +93,8 @@ class Correspondence:
         tooplf = (key1, key2)
         toopls = (key2, key1)
         if (tooplf in dictionary.keys()) or (toopls in dictionary.keys()):
-            return True
+            #for testing, this has been set to False, Typically, should be set to True
+            return False
         return False
 
     @staticmethod
@@ -110,6 +121,11 @@ class Correspondence:
         '''
         n = len(tree)
         [r, c] = np.nonzero(tree)
+        print("---")
+        print(r)
+        print(c)
+        print(tree)
+        pprint(pa)
         mm = min(r[0], c[0])
         MM = max(r[0], c[0])
         N = len(pa[2][mm, MM][0])
@@ -171,8 +187,14 @@ class Correspondence:
     def principal_component_alignment(mesh1, mesh2, mirror):
         X = mesh1.vertices.T
         Y = mesh2.vertices.T
+        #print(X)
+        #print(Y)
         UX, DX, VX = linalg.svd(X, full_matrices=False)
         UY, DY, VY = linalg.svd(Y, full_matrices=False)
+        #print(UX)
+        #print(UY)
+        #print(UX.T)
+        #print(UY.T)
         P=[]
         R=[]
 
@@ -186,8 +208,7 @@ class Correspondence:
             P.append(np.array([1, 1, -1]))
             P.append(np.array([-1, -1, -1]))
         for i in P:
-            R.append(np.dot(UX * i, UY.T))
-
+            R.append(np.dot((UX.T * i).T, UY.T))
         return R
 
     @staticmethod
@@ -200,6 +221,8 @@ class Correspondence:
         permutations = []
         for rot, i in zip(R, range(len(R))):
             min_cost = np.ones(len(R)) * np.inf
+            print(mesh1.vertices)
+            print(np.dot(rot, mesh2.vertices.T))
             cost = distance_matrix(mesh1.vertices, np.dot(rot, mesh2.vertices.T).T)
             # The hungarian algorithm:
             V1_ind, V2_ind = linear_sum_assignment(cost)
@@ -225,14 +248,14 @@ class Correspondence:
     @staticmethod
     # Computes the Local Generalized Procrustes Distance between meshes.
     # NOTE: Params R_0, M_0 needs specification.
-    def locgpd(mesh1, mesh2, R_0, M_0=None, max_iter=1000, mirror=False):
+    def locgpd(mesh1, mesh2, R_0=None, M_0=None, max_iter=1000, mirror=False):
         # best_permutation and best_rot come from PCA
         if M_0 is None:
             n = len(mesh1.vertices)
             M_0 = np.ones(n, n)
         best_permutation, best_rot = Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2, mirror)
 
-        if R_0 != 0:
+        if R_0 is not None:
             best_rot = R_0
 
         V1 = mesh1.vertices.T
@@ -267,7 +290,7 @@ class Correspondence:
         Permutate = best_permutation
         gamma = 1.5 * Correspondence.ltwoinf(V1 - newV2)
 
-        return d, Rotate, Permutate, gamma
+        return {'d': d, 'r': Rotate, 'p': Permutate, 'g': gamma}
 
     @staticmethod
     def ltwoinf(X):
@@ -306,4 +329,4 @@ class Correspondence:
         n = len(mesh1.vertices)
         if not R:
             R = Correspondence.best_pairwise_PCA_alignment(mesh1=mesh1, mesh2=mesh2, mirror=mirror)[1]
-        return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=R, M_0=np.ones(n, n), mirror=mirror)
+        return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=R, M_0=np.ones((n, n)), mirror=mirror)

@@ -27,7 +27,8 @@ class Job(object):
         if job_dict:
             self.import_job_dict(job_dict)
         elif data or params or func:
-            self.import_args(data, params, func)
+            # print(data)
+            self.import_args(data=data, params=params, func=func)
 
     def import_job_dict(self, job_dict):
         if (job_dict and isinstance(job_dict, dict)):
@@ -38,7 +39,7 @@ class Job(object):
             if 'func' in job_dict and self.__validate_func(job_dict['func']):
                 self.func = job_dict['func']
 
-    def import_args(self, data={}, params={}, func={}):
+    def import_args(self, data=None, params=None, func=None):
         if data and self.__validate_data(data):
             self.data = data
             
@@ -50,9 +51,9 @@ class Job(object):
         
     def as_dict(self):
         """Returns job data structure as dict"""
-        if (__validate_data(self.data) 
-            and __validate_params(self.params) 
-            and __validate_func(self.func)):
+        if (self.__validate_data(self.data) 
+            and self.__validate_params(self.params) 
+            and self.__validate_func(self.func)):
             return {
                 'data': self.data,
                 'params': self.params,

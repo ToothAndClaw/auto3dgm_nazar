@@ -2,7 +2,7 @@ from numpy import linalg
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance_matrix, KDTree
 from scipy.optimize import linear_sum_assignment as Hungary
-from scipy.sparse import csr_matrix, identity
+from scipy.sparse import csr_matrix, identity, find
 from scipy.sparse.csgraph import minimum_spanning_tree, shortest_path
 import numpy as np
 from pprint import pprint
@@ -27,7 +27,10 @@ class Correspondence:
         self.mirror=mirror
         self.meshes=meshes
         self.initial_alignment=initial_alignment
+        if self.initial_alignment:
+            self.initial_pa_alignment=self.localize()
         n = len(meshes)
+        n_pts = meshes[0].vertices.shape[0]
 
         job_data = self.generate_job_data()
         job_params = self.generate_params()
@@ -38,21 +41,27 @@ class Correspondence:
         output = new_jobrun.execute_jobs()
         #dependent on changing line 52 from jobrun (job_dict['output']['results'].... -> job_dict['output'] = results_dict)
         #also depends on results_dict being in d->float, p->permutation r-> rotaiton mapping
-        results_dict = output['output']
+        self.results_dict = output['output']
         
-        self.d_ret = np.array([[None for x in range(n)] for y in range(n)])
-        self.p_ret = np.array([[None for x in range(n)] for y in range(n)])
+        self.d_ret = np.empty([n, n])
+        #self.p_ret = np.empty([n, n, n_pts], dtype=int)
+        self.p_ret = {}
         #what is permutation
         self.r_ret = np.array([[None for x in range(n)] for y in range(n)])
 
 
-        for key in results_dict.keys():
+        for key in self.results_dict.keys():
             #key will be a tuple
-            print(results_dict)
-            self.d_ret[key[0]][key[1]] = results_dict[key]['d']
-            self.p_ret[key[0]][key[1]] = results_dict[key]['p']
-            self.r_ret[key[0]][key[1]] = results_dict[key]['r']
-        
+            self.d_ret[key[0]][key[1]] = self.results_dict[key]['d']
+
+            x = self.results_dict[key]['p']
+            if key[0] not in self.p_ret:
+                self.p_ret[key[0]] = {}
+            self.p_ret[key[0]][key[1]] = self.results_dict[key]['p']
+
+            self.r_ret[key[0]][key[1]] = self.results_dict[key]['r']
+        self.pairwise_alignment = {'d': self.d_ret, 'r': self.r_ret, 'p': self.p_ret}    
+
         print('+++++')
         print(self.d_ret)
         print(self.p_ret)
@@ -60,7 +69,21 @@ class Correspondence:
 
         if self.globalizeparam:
             self.mst_matrix = Correspondence.find_mst(self.d_ret)
-            self.globalized_alignment = self.globalize([self.d_ret, self.r_ret, self.p_ret], self.mst_matrix)
+            self.globalized_alignment = self.globalize(self.pairwise_alignment, self.mst_matrix)
+
+    def localize(self):
+        if not self.initial_alignment:
+            return
+        p = {}
+        r = np.array([[None for x in range(len(self.initial_alignment['r']))] for y in range(len(self.initial_alignment['r']))])
+        for i in range(0, len(self.initial_alignment['r'])):
+            for j in range(0, len(self.initial_alignment['r'])):            
+                r[i][j] = self.initial_alignment['r'][i].T @ self.initial_alignment['r'][j]
+                if i not in p:
+                    p[i] = {}
+                p_temp = self.initial_alignment['p'][j] @ self.initial_alignment['p'][i].T
+                p[i][j] = self.permutation_sparse_to_flat(p_temp)
+        return {'r': r, 'p': p}
 
 
     def generate_job_data(self):
@@ -68,10 +91,14 @@ class Correspondence:
         for indexf, first in enumerate(self.meshes):
             for indexs, second in enumerate(self.meshes):
                 if not Correspondence.has_pair(indexf, indexs, ret):
-                    R = None
-                    if self.initial_alignment is not None:
-                        R = self.initial_alignment['r'][indexf][indexs]
-                    val = Correspondence.dict_val_gen(first, second, R=R)
+                    if self.initial_alignment is None:
+                        initial_alignment = None
+                    else:
+                        initial_alignment = {
+                            'r': self.initial_pa_alignment['r'][indexf][indexs],
+                            'p': self.initial_pa_alignment['p'][indexf][indexs]
+                        }
+                    val = Correspondence.dict_val_gen(first, second, initial_alignment=initial_alignment)
                     toopl = (indexf, indexs)
                     ret[toopl] = val
                 
@@ -85,8 +112,8 @@ class Correspondence:
 
 
     @staticmethod
-    def dict_val_gen(first, second, R=None):
-        return {'mesh1': first, 'mesh2': second, 'R': R}
+    def dict_val_gen(first, second, initial_alignment=None):
+        return {'mesh1': first, 'mesh2': second, 'initial_alignment': initial_alignment}
 
     @staticmethod
     def has_pair(key1, key2, dictionary):
@@ -99,9 +126,7 @@ class Correspondence:
 
     @staticmethod
     def find_mst(distance_matrix):
-        X = csr_matrix([t for t in distance_matrix])
-        output = minimum_spanning_tree(X)
-        return output.toarray()
+        return minimum_spanning_tree(csr_matrix(distance_matrix)).toarray()
 
     @staticmethod
     def graphshortestpaths(graph, index, reference):
@@ -114,58 +139,37 @@ class Correspondence:
         return [dist, pat]
 
     @staticmethod
-    def globalize(pa, tree, base=1, type='mst'):
+    def globalize(pa, tree, base=0, type='mst'):
         '''
         takes a pairwise alignment (pa) formatted as a 3-entry array [D, R, P] and a tree (NP-matrix) and returns
         the global alignment obtained by propagating the tree as a list
         '''
         n = len(tree)
         [r, c] = np.nonzero(tree)
-        print("---")
-        print(r)
-        print(c)
-        print(tree)
-        pprint(pa)
         mm = min(r[0], c[0])
         MM = max(r[0], c[0])
-        N = len(pa[2][mm, MM][0])
+        pa_r = pa['r']
+        pa_p = pa['p']
+        N = pa_p[mm][MM].shape[0]
 
         retR = [None] * n
         retP = [None] * n
-        '''
-        BaseDistMatrix = pa[0]
-        temp = np.diag(np.diag(BaseDistMatrix))
-        BaseDistMatrix = BaseDistMatrix - temp
-        BaseDistMatrix += BaseDistMatrix.transpose()
 
-        tD = BaseDistMatrix
-        tD += np.diag(np.matrix(np.ones(len(tD)) * np.inf))
-        epsilon = np.mean(min(tD, [], 2))
-
-        adjMat = np.exp(-np.square(tD) / np.square(epsilon))
-
-        RCell = [[None] * len(pa[1]) for n in len(pa[1][0])]
-        
-        for j in range(1, len(RCell)):
-            for k in range(j+1, len(RCell[0])):
-                RCell[j][k] = pa[1][j][k]
-                RCell[k][j] = RCell[j][k].transpose()
-        '''
         if type is 'mst':
-            for li in range(1, n):
+            for li in range(0, n):
                 [dist, pat] = Correspondence.graphshortestpaths(tree+tree.transpose(), li, base)
-                P = identity(N)
+                P = identity(N, dtype=int)
                 R = np.identity(3)
-                for lj in range(2, len(pat)):
+                for lj in range(1, len(pat)):
                     if pat[lj - 1] > pat[lj]:
-                        P = np.matmul(P, pa[2][pat[lj], pat[lj-1]])
-                        R = np.matmul(pa[1][pat[lj], pat[lj-1]], R)
+                        P = P @ Correspondence.permutation_flat_to_sparse(pa_p[pat[lj]][pat[lj-1]])
+                        R = pa_r[pat[lj], pat[lj-1]] @ R
                     else:
-                        P = np.matmul(P, pa[2][pat[lj-1], pat[lj]])
-                        R = np.matmul(pa[1][pat[lj-1], pat[lj]], R)
+                        P = P @ Correspondence.permutation_flat_to_sparse(pa_p[pat[lj-1]][pat[lj]])
+                        R = pa_r[pat[lj-1], pat[lj]] @ R
                 retR[li] = R
                 retP[li] = P
-        return [retR, retP]                
+        return {'r': retR, 'p': retP}               
 
     @staticmethod
     def getpath(predecessors, index, reference):
@@ -178,6 +182,16 @@ class Correspondence:
         ret.append(reference)
         ret.reverse()
         return ret
+
+    @staticmethod
+    def permutation_flat_to_sparse(p):
+        data = np.ones(p.shape[0], dtype=int)
+        cols = np.array(range(0,p.shape[0]), dtype=int)
+        return csr_matrix((data, (p, cols)), shape=(p.shape[0], p.shape[0]))
+
+    @staticmethod
+    def permutation_sparse_to_flat(p):
+        return find(p)[0]
 
     @staticmethod
     # An auxiliary method for computing the initial pairwise-alignment
@@ -219,10 +233,8 @@ class Correspondence:
     def best_pairwise_PCA_alignment(mesh1, mesh2, mirror):
         R = Correspondence.principal_component_alignment(mesh1, mesh2, mirror)
         permutations = []
+        min_cost = np.ones(len(R)) * np.inf
         for rot, i in zip(R, range(len(R))):
-            min_cost = np.ones(len(R)) * np.inf
-            print(mesh1.vertices)
-            print(np.dot(rot, mesh2.vertices.T))
             cost = distance_matrix(mesh1.vertices, np.dot(rot, mesh2.vertices.T).T)
             # The hungarian algorithm:
             V1_ind, V2_ind = linear_sum_assignment(cost)
@@ -232,8 +244,9 @@ class Correspondence:
         best_rot_ind = np.argmin(min_cost)
         best_permutation = permutations[best_rot_ind]
         best_rot = R[best_rot_ind]
+        d = min_cost[best_rot_ind]
 
-        return best_permutation, best_rot
+        return {'p': best_permutation, 'r': best_rot, 'd': d}
 
     @staticmethod
     # Returns the meshed aligned by the initial PCA component pairing.
@@ -246,17 +259,29 @@ class Correspondence:
         return Rotations
 
     @staticmethod
+    def permutation_from_rotation(mesh1, mesh2, R):
+        cost = distance_matrix(mesh1.vertices, np.dot(R, mesh2.vertices.T).T)
+        V1_ind, V2_ind = linear_sum_assignment(cost)
+        return V2_ind
+
+    @staticmethod
     # Computes the Local Generalized Procrustes Distance between meshes.
     # NOTE: Params R_0, M_0 needs specification.
     def locgpd(mesh1, mesh2, R_0=None, M_0=None, max_iter=1000, mirror=False):
         # best_permutation and best_rot come from PCA
         if M_0 is None:
-            n = len(mesh1.vertices)
-            M_0 = np.ones(n, n)
-        best_permutation, best_rot = Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2, mirror)
+            M_0 = np.ones([len(mesh1.vertices), len(mesh1.vertices)])
 
-        if R_0 is not None:
+        if R_0 is None:
+            best_permutation, best_rot, d = Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2, mirror)
+        else:
             best_rot = R_0
+            best_permutation = Correspondence.permutation_from_rotation(mesh1, mesh2, R_0)
+
+        print(mesh1)
+        print(mesh2)
+        print(best_rot)
+        print(best_permutation)
 
         V1 = mesh1.vertices.T
         V2 = mesh2.vertices.T
@@ -268,13 +293,13 @@ class Correspondence:
             #  Do Kabsch
             cur_rot = Correspondence.Kabsch(newV2.T, V1.T)
             newV2 = np.dot(cur_rot.T, newV2)
-            print("after Kab cost = ", np.linalg.norm(V1 - newV2))
+            #print("after Kab cost = ", np.linalg.norm(V1 - newV2))
             # Do Hungary
             cur_cost = distance_matrix(V1.T, newV2.T)
             cur_V1_ind, cur_permutation = Hungary(cur_cost)
             # print(cur_permutation)
-            print("after Hungary cost = ", np.sqrt(np.sum(cur_cost[cur_V1_ind, cur_permutation] ** 2)))
-            if i > max_iter:
+            #print("after Hungary cost = ", np.sqrt(np.sum(cur_cost[cur_V1_ind, cur_permutation] ** 2)))
+            if np.sum((cur_permutation - best_permutation) != 0) < 1 or i > max_iter:
                 break
             else:
                 if i % 100 == 0:
@@ -285,7 +310,8 @@ class Correspondence:
             best_rot = cur_rot
             i += 1
 
-        d = np.sum((cur_permutation - best_permutation))
+        #d = np.sum((cur_permutation - best_permutation))
+        d = np.sqrt(np.sum(cur_cost[cur_V1_ind, cur_permutation] ** 2))
         Rotate = best_rot
         Permutate = best_permutation
         gamma = 1.5 * Correspondence.ltwoinf(V1 - newV2)
@@ -325,8 +351,8 @@ class Correspondence:
         return R
 
     @staticmethod
-    def align(mesh1, mesh2, mirror, R=None):
+    def align(mesh1, mesh2, mirror, initial_alignment=None):
         n = len(mesh1.vertices)
-        if not R:
-            R = Correspondence.best_pairwise_PCA_alignment(mesh1=mesh1, mesh2=mesh2, mirror=mirror)[1]
-        return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=R, M_0=np.ones((n, n)), mirror=mirror)
+        if not initial_alignment:
+            initial_alignment = Correspondence.best_pairwise_PCA_alignment(mesh1=mesh1, mesh2=mesh2, mirror=mirror)
+        return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=initial_alignment['r'], M_0=np.ones((n, n)), mirror=mirror)

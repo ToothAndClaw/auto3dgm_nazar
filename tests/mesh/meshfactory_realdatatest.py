@@ -1,5 +1,5 @@
 #Test script for the mesh factory
-from auto3dgm.mesh.meshfactory import MeshFactory
+from auto3dgm_nazar.mesh.meshfactory import MeshFactory
 
 #Test case 0: Giving out a non-sense file
 #Conditions: filestring refers to a non existing file

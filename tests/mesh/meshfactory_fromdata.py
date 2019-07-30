@@ -1,4 +1,4 @@
-from auto3dgm.mesh.meshfactory import MeshFactory
+from auto3dgm_nazar.mesh.meshfactory import MeshFactory
 from numpy import array, zeros
 
 def print_polyfaces(polydata):

@@ -25,14 +25,14 @@ import vtk
 from numpy import all, amin, any, argmax, array, isclose, ndarray, where, empty
 import random
 from scipy.spatial.distance import cdist
-from auto3dgm.mesh.mesh import Mesh
-from auto3dgm.mesh.meshfactory import MeshFactory
+from auto3dgm_nazar.mesh.mesh import Mesh
+from auto3dgm_nazar.mesh.meshfactory import MeshFactory
 import numpy as np
-from auto3dgm import jobrun
-from auto3dgm.jobrun import jobrun
-from auto3dgm.jobrun import job
-from auto3dgm.jobrun.jobrun import JobRun
-from auto3dgm.jobrun.job import Job
+from auto3dgm_nazar import jobrun
+from auto3dgm_nazar.jobrun import jobrun
+from auto3dgm_nazar.jobrun import job
+from auto3dgm_nazar.jobrun.jobrun import JobRun
+from auto3dgm_nazar.jobrun.job import Job
 
 class Subsample:
     def __init__(self, pointNumber=None, method=None, meshes=None):

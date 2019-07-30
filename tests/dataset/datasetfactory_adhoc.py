@@ -1,5 +1,5 @@
 #Test script for the dataset factory
-from auto3dgm.dataset.datasetfactory import DatasetFactory
+from auto3dgm_nazar.dataset.datasetfactory import DatasetFactory
 
 #Test case 1:
 #Conditions: directorystring refers to an invalid directory

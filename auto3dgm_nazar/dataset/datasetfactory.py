@@ -1,8 +1,8 @@
 from os import listdir
 from os.path import isfile, splitext, join
-from auto3dgm.mesh.meshfactory import MeshFactory 
-from auto3dgm.dataset.datasetcollection import DatasetCollection
-from auto3dgm.mesh.subsample import Subsample 
+from auto3dgm_nazar.mesh.meshfactory import MeshFactory 
+from auto3dgm_nazar.dataset.datasetcollection import DatasetCollection
+from auto3dgm_nazar.mesh.subsample import Subsample 
 from numpy import empty
 
 class DatasetFactory(object):

@@ -1,4 +1,4 @@
-from auto3dgm.mesh.meshfactory import MeshFactory
+from auto3dgm_nazar.mesh.meshfactory import MeshFactory
 
 filestring='../fixtures/int_vertex_super_simple.ply'
 m = MeshFactory.mesh_from_file(filestring)

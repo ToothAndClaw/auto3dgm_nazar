@@ -6,11 +6,11 @@ from scipy.sparse import csr_matrix, identity, find
 from scipy.sparse.csgraph import minimum_spanning_tree, shortest_path
 import numpy as np
 from pprint import pprint
-from auto3dgm import jobrun
-from auto3dgm.jobrun import jobrun
-from auto3dgm.jobrun import job
-from auto3dgm.jobrun.jobrun import JobRun
-from auto3dgm.jobrun.job import Job
+from auto3dgm_nazar import jobrun
+from auto3dgm_nazar.jobrun import jobrun
+from auto3dgm_nazar.jobrun import job
+from auto3dgm_nazar.jobrun.jobrun import JobRun
+from auto3dgm_nazar.jobrun.job import Job
 
 
 class Correspondence:

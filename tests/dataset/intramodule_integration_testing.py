@@ -1,7 +1,7 @@
 '''
 A primitive integration testing for the data set module
 '''
-from auto3dgm.dataset.datasetfactory import *
+from auto3dgm._nazar.dataset.datasetfactory import *
 directorystring='/home/safari/Desktop/tutkimus/Slicer/HackathonJAN/testdata/20_Test_Teeth_PLY/'
 A=DatasetFactory.ds_from_dir(directorystring)
 

@@ -1,5 +1,5 @@
 from os.path import isfile, splitext
-from auto3dgm.mesh.mesh import Mesh
+from auto3dgm_nazar.mesh.mesh import Mesh
 from numpy import array, ndarray, concatenate, empty, full
 from vtk import vtkPLYReader,vtkOBJReader,vtkSTLReader,vtkPolyData, vtkPoints, vtkCellArray
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk, numpy_to_vtkIdTypeArray

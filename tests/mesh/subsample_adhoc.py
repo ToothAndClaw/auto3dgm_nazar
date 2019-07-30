@@ -1,5 +1,5 @@
-from auto3dgm.mesh.meshfactory import MeshFactory
-from auto3dgm.mesh.subsample import Subsample
+from auto3dgm_nazar.mesh.meshfactory import MeshFactory
+from auto3dgm_nazar.mesh.subsample import Subsample
 from numpy import array
 
 vertices = array([[0, 0, 0],[1, 0, 0],[1, 1, 0],[0, 1, 0],[2, 2, 1]])

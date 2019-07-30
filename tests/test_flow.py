@@ -1,6 +1,6 @@
-from auto3dgm.dataset.datasetfactory import DatasetFactory
-from auto3dgm.mesh.subsample import Subsample
-from auto3dgm.analysis.correspondence import Correspondence
+from auto3dgm_nazar.dataset.datasetfactory import DatasetFactory
+from auto3dgm_nazar.mesh.subsample import Subsample
+from auto3dgm_nazar.analysis.correspondence import Correspondence
 import os
 
 cwd=os.getcwd()
@@ -41,9 +41,9 @@ dc.add_analysis_set(ss_200_correspondence_res, 'ss200')
 
 # Alternative test flow: Subsample one resolution at a time
 
-from auto3dgm.dataset.datasetfactory import DatasetFactory
-from auto3dgm.mesh.subsample import Subsample
-from auto3dgm.analysis.correspondence import Correspondence
+from auto3dgm_nazar.dataset.datasetfactory import DatasetFactory
+from auto3dgm_nazar.mesh.subsample import Subsample
+from auto3dgm_nazar.analysis.correspondence import Correspondence
 import os
 
 cwd=os.getcwd()

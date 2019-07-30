@@ -1,7 +1,7 @@
 # A very simple test script for the locgpd functionality
-from auto3dgm.dataset.datasetfactory import *
-from auto3dgm.analysis.correspondence import Correspondence
-from auto3dgm.mesh.meshfactory import MeshFactory
+from auto3dgm_nazar.dataset.datasetfactory import *
+from auto3dgm_nazar.analysis.correspondence import Correspondence
+from auto3dgm_nazar.mesh.meshfactory import MeshFactory
 import numpy as np
 
 # Two meshes. Note that B is obtained from A via permutation (123): x goes to y, y goes to z, z goes to x.

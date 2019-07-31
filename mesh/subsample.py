@@ -122,35 +122,34 @@ class Subsample:
 
     @staticmethod
     def far_point_subsample(mesh, n, seed=None):
-        # seed should be a list of points 3x previous n
+        # seed should be a dict with key mesh name and value list of seed vertices N x 3 (where N is number of points)
         # return val is mesh object that I wrote
-        # seed = previous mesh.verticies
-        #edited this method so that the correct previous seed is extracted from the params dict, since the architecture forces the entire dict to be passed down
         v = mesh.vertices
-        #print(seed)
-        seed_t = seed[mesh.name]
+        if seed is None:
+            seed_t = np.empty([0,0])
+        else:
+            seed_t = seed[mesh.name]
+
         if n > v.shape[0] or n < seed_t.shape[0]:
-            #print(n)
-            #print(v.shape[0])
-            #print(v.shape[1])
-            #print(seed_t.shape[0])
             raise ValueError('n larger than number of vertices or smaller than number of seed_t points')
-        if isinstance(seed_t, ndarray) and seed_t.size:
-            if v.shape[1] == 3 and v.ndim == 2:
-                # are s in v (or close enough?)
-                if all([any(all(isclose(x, v), 1)) for x in seed_t]):
-                    # get ind for seed_t points
-                    seedint = [where(all(isclose(x, v), axis=1))[0][0] for x in seed_t]
+
+        if isinstance(seed_t, ndarray) and seed_t.size and v.shape[1] == 3 and v.ndim == 2:
+            if seed_t.ndim == 1 and seed_t.shape[0] == 3:
+                seed_t = np.array([seed_t])
+            # are s in v (or close enough?)
+            if all([any(all(isclose(x, v), 1)) for x in seed_t]):
+                # get ind for seed_t points
+                subidx = [where(all(isclose(x, v), axis=1))[0][0] for x in seed_t]
             else:
                 raise ValueError('seed improperly formed, expecting n x 3 array')
         else:
             random.seed()
-            seedint = [random.randint(0, v.shape[0]-1)]
-        subint = seedint
-        for i in range(len(subint),n):
-            subint.append(argmax(amin(cdist(v[subint], v), axis=0)))
+            subidx = [random.randint(0, v.shape[0]-1)]
+
+        for i in range(len(subidx),n):
+            subidx.append(argmax(amin(cdist(v[subidx], v), axis=0)))
         # list of integers that subsampled
-        return MeshFactory.mesh_from_data(v[subint])
+        return MeshFactory.mesh_from_data(v[subidx])
 
     # far_point_subsample('mesh') TODO: What is this
      

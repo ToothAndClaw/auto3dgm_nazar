@@ -35,12 +35,13 @@ from auto3dgm_nazar.jobrun.jobrun import JobRun
 from auto3dgm_nazar.jobrun.job import Job
 
 class Subsample:
-    def __init__(self, pointNumber=None, method=None, meshes=None):
+    def __init__(self, pointNumber=None, method=None, meshes=None, seed={}, center_scale=False):
         self.pointNumber=pointNumber
+        self.pointNumber.sort()
+        print(self.pointNumber)
         self.method=method
         self.meshes=meshes
         ret = {}
-        seed = {}
         for singlePoint in self.pointNumber:
             #assumes all entries in list of pointNumbers are unique
             job = self.prepare_analysis(point_number=singlePoint, method=method, seed=seed)
@@ -48,16 +49,17 @@ class Subsample:
             ret[singlePoint] = {'output': results}
             for key in results['output']:
                 #keys should be mesh names
-                #print(results)
                 seed[results['output'][key].name] = results['output'][key].vertices
+                if center_scale:
+                    results['output'][key].center()
+                    results['output'][key].scale_unit_norm()
 
         self.ret = ret
 
-
-    def prepare_analysis(self, point_number=None, method='FPS', seed={}):
+    def prepare_analysis(self, point_number=None, method='FPS', seed={}, center_scale=False):
         #Create Job
         job_data = Subsample.generate_data(meshes=self.meshes)
-        job_params = Subsample.generate_params(point_number=point_number, subsample_method=self.method, seed=seed, meshes=self.meshes)
+        job_params = Subsample.generate_params(point_number=point_number, subsample_method=self.method, seed=seed, center_scale=center_scale, meshes=self.meshes)
         job_func = self.generate_func(func=method)
         #print("mark")
         #print(job_func)
@@ -82,7 +84,7 @@ class Subsample:
         return ret
 
     @staticmethod
-    def generate_params(point_number=None, subsample_method=None, seed={}, meshes=None):
+    def generate_params(point_number=None, subsample_method=None, seed={}, center_scale=False, meshes=None):
         #dict of params, issue with the fucntion reference?
         '''
         {
@@ -104,6 +106,7 @@ class Subsample:
             else:
                 seed_t[mesh.name] = seed[mesh.name]
         ret['seed'] = seed_t
+        ret['center_scale'] = center_scale
         return ret
 
     def generate_func(self, func='FPS'):
@@ -121,7 +124,7 @@ class Subsample:
         return jobrun.execute_jobs()
 
     @staticmethod
-    def far_point_subsample(mesh, n, seed=None):
+    def far_point_subsample(mesh, n, seed=None, center_scale=False):
         # seed should be a dict with key mesh name and value list of seed vertices N x 3 (where N is number of points)
         # return val is mesh object that I wrote
         v = mesh.vertices
@@ -149,7 +152,7 @@ class Subsample:
         for i in range(len(subidx),n):
             subidx.append(argmax(amin(cdist(v[subidx], v), axis=0)))
         # list of integers that subsampled
-        return MeshFactory.mesh_from_data(v[subidx])
+        return MeshFactory.mesh_from_data(v[subidx], center_scale=center_scale, name=mesh.name)
 
     # far_point_subsample('mesh') TODO: What is this
      

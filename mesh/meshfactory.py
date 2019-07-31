@@ -56,7 +56,7 @@ class MeshFactory(object):
             raise OSError(msg)
 
     @staticmethod
-    def mesh_from_data(vertices, faces=empty([0,0]), center_scale=False, deep=True):
+    def mesh_from_data(vertices, faces=empty([0,0]), name=None, center_scale=False, deep=True):
         """Returns a VTK PolyData object from vertex and face ndarrays"""
         vertices = array(vertices, dtype=float)
         faces = array(faces, dtype=int)
@@ -77,7 +77,7 @@ class MeshFactory(object):
             cells.SetCells(nf, vtk_id_array)
             polydata.SetPolys(cells)
 
-        return Mesh(vtk_mesh=polydata, center_scale=center_scale)
+        return Mesh(vtk_mesh=polydata, center_scale=center_scale, name=name)
 
     @staticmethod
     def off_parser(file_path):

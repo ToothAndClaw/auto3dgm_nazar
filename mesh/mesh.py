@@ -8,28 +8,14 @@ import math
 class Mesh:
     #params: self, and a VTK Object called vtk_mesh
     def __init__(self, vtk_mesh, center_scale=False, name=None):
-        center = vtk.vtkCenterOfMass()
-        center.SetInputData(vtk_mesh)
-        center.SetUseScalarsAsWeights(False)
-        center.Update()
-        self.old_centerpoint = center.GetCenter()
-        self.centerpoint = center.GetCenter()
-        self.old_polydata = vtk_mesh #I think that I'm being passed a PolyData now, instead of a vtk_mesh
-        self.old_scale = np.linalg.norm(vtk_to_numpy(vtk_mesh.GetPoints().GetData()), 'fro')
-
-        if center_scale:
-            transform = vtk.vtkTransform()
-            #bp()
-            transform.Translate(-self.centerpoint[0], -self.centerpoint[1], -self.centerpoint[2])
-            transformt = vtk.vtkTransformPolyDataFilter()
-            transformt.SetInputData(vtk_mesh)
-            transformt.SetTransform(transform)
-            transformt.Update()
-            self.polydata = transformt.GetOutput()
-        else:
-            self.polydata = vtk_mesh
-
+        self.polydata = vtk_mesh
         self.name = name
+        self.initial_centroid = self.centroid
+        self.initial_scale = self.scale
+        
+        if center_scale:
+            self.center()
+            self.scale_unit_norm()
 
     ''' we don't have to use getters like this, but using it in this case bc 1) 
     attributes are now pointers and don't have to be updated, 2) can't be 
@@ -60,29 +46,35 @@ class Mesh:
 
     @property
     def centroid(self):
-        #average of all vertices
-        '''
-        arrset = vtk_to_numpy(self.polydata.GetPoints().GetData())
-        ret = [0, 0, 0]
-        count = 0
-        for point in arrset:
-            ret += point
-            count += 1
-        return [val/count for val in ret]
-        '''
-        return self.centerpoint
-
-    @property
-    def centroid2(self):
-        centerFilter = vtk.vtkCenterOfMass()
-        centerFilter.SetInputData(self.polydata)
-        centerFilter.SetUseScalarsAsWeights(False)
-        centerFilter.update()
-        return centerFilter.GetCenter()
+        '''average of all vertices'''
+        center = vtk.vtkCenterOfMass()
+        center.SetInputData(self.polydata)
+        center.SetUseScalarsAsWeights(False)
+        center.Update()
+        return center.GetCenter()
 
     @property
     def scale(self):
         return np.linalg.norm(vtk_to_numpy(self.polydata.GetPoints().GetData()), 'fro')
+
+    def center(self):
+        transform = vtk.vtkTransform()
+        transform.Translate(-self.centroid[0], -self.centroid[1], -self.centroid[2])
+        transformt = vtk.vtkTransformPolyDataFilter()
+        transformt.SetInputData(self.polydata)
+        transformt.SetTransform(transform)
+        transformt.Update()
+        self.polydata = transformt.GetOutput()
+
+    def scale_unit_norm(self):
+        transform = vtk.vtkTransform()
+        scale_factor = 1.0/self.scale
+        transform.Scale(scale_factor, scale_factor, scale_factor)
+        transformt = vtk.vtkTransformPolyDataFilter()
+        transformt.SetInputData(self.polydata)
+        transformt.SetTransform(transform)
+        transformt.Update()
+        self.polydata = transformt.GetOutput()
 
     def rotate(self, arr):
         temp = isValidRotation(arr)

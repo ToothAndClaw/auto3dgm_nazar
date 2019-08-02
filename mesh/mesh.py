@@ -95,9 +95,9 @@ class Mesh:
         rpy = np.array([x, y, z])
 
         transform = vtk.vtkTransform()
-        transform.RotateX(x)
-        transform.RotateY(y)
-        transform.RotateZ(z)
+        transform.RotateX(x/math.pi*180)
+        transform.RotateY(y/math.pi*180)
+        transform.RotateZ(z/math.pi*180)
 
         transformt = vtk.vtkTransformPolyDataFilter()
         transformt.SetInputData(self.polydata)

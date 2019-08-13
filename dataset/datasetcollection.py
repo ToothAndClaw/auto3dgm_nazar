@@ -47,7 +47,7 @@ class DatasetCollection:
             msg="The Dataset Collection already contains an analysis set with name "+analysis_set_name
             raise OSError(msg)
         else:
-            self.analysis_set[analysis_set_name]=analysis_set
+            self.analysis_sets[analysis_set_name]=analysis_set
 
     def remove_dataset(self,dataset_name):
         if not dataset_name in self.datasets:
@@ -56,7 +56,7 @@ class DatasetCollection:
         else:
             del self.datasets[dataset_name]
 
-    def add_analysis_set(self,analysis_set_name):
+    def remove_analysis_set(self,analysis_set_name):
         if not analysis_set_name in self.analysis_sets:
             msg="The Dataset Collection does not contain a dataset named "+analysis_set_name
             raise OSError(msg)

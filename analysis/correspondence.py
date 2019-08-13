@@ -201,28 +201,22 @@ class Correspondence:
     def principal_component_alignment(mesh1, mesh2, mirror):
         X = mesh1.vertices.T
         Y = mesh2.vertices.T
-        #print(X)
-        #print(Y)
         UX, DX, VX = linalg.svd(X, full_matrices=False)
         UY, DY, VY = linalg.svd(Y, full_matrices=False)
-        #print(UX)
-        #print(UY)
-        #print(UX.T)
-        #print(UY.T)
         P=[]
         R=[]
 
-        P.append(np.array([1, 1, 1]))
-        P.append(np.array([1, -1, -1]))
-        P.append(np.array([-1, -1, 1]))
-        P.append(np.array([-1, 1, -1]))
+        P.append(np.diag([1, 1, 1]))
+        P.append(np.diag([-1, -1, 1]))
+        P.append(np.diag([1, -1, -1]))
+        P.append(np.diag([-1, 1, -1]))
         if (mirror == 1):
-            P.append(np.array([-1, 1, 1]))
-            P.append(np.array([1, -1, 1]))
-            P.append(np.array([1, 1, -1]))
-            P.append(np.array([-1, -1, -1]))
+            P.append(np.diag([-1, 1, 1]))
+            P.append(np.diag([1, -1, 1]))
+            P.append(np.diag([1, 1, -1]))
+            P.append(np.diag([-1, -1, -1]))
         for i in P:
-            R.append(np.dot((UX.T * i).T, UY.T))
+            R.append(UX @ i @ UY.T)
         return R
 
     @staticmethod

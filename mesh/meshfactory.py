@@ -39,13 +39,14 @@ class MeshFactory(object):
             elif splitext(file_path)[1] == '.off':
                 (vertices, faces)=MeshFactory.off_parser(file_path)
                 return MeshFactory.mesh_from_data(vertices, faces, center_scale=center_scale)
-
+            namelist=file_path.split('/')
+            name=namelist[len(namelist)-1].split('.')[0]
             reader.SetFileName(file_path)
             reader.Update()
             
             polydata = reader.GetOutput()
             if isinstance(polydata, vtkPolyData):
-                return Mesh(polydata, center_scale, file_path)
+                return Mesh(polydata, center_scale, name)
             else:
                 msg = 'VTK reader output type expected {}, but got {}'.format(
                     'vtkCommonDataModelPython.vtkPolyData', type(polydata))

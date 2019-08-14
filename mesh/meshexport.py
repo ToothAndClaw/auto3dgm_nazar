@@ -1,11 +1,12 @@
 import vtk
 
-class MeshExport(object):
+class MeshExport:
 
-    def file_output(fp,mesh,format='ply'):
-        tmp=mesh.name.split("/")
-        t=len(tmp)
-        name=tmp[t-1].split(".")[0]
+    @staticmethod
+    def writeToFile(fp,mesh,format='ply'):
+        name=mesh.name#.split("/")
+        #t=len(tmp)
+        #name=tmp[t-1].split(".")[0]
         if format=='ply':
             writer=vtk.vtkPLYWriter()
         if format=='stl':

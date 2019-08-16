@@ -36,29 +36,31 @@ class DatasetCollection:
 
 
     def add_dataset(self,dataset,dataset_name):
-        if dataset_name in self.datasets:
-            msg="The Dataset Collection already contains a dataset with name "+dataset_name
-            raise OSError(msg)
-        else:
-            self.datasets[dataset_name]=dataset
+        #if dataset_name in self.datasets:
+        #    msg="The Dataset Collection already contains a dataset with name "+str(dataset_name)
+        #    raise OSError(msg)
+        #else:
+        #    self.datasets[dataset_name]=dataset
+        self.datasets[dataset_name]=dataset
 
     def add_analysis_set(self,analysis_set,analysis_set_name):
-        if analysis_set_name in self.analysis_sets:
-            msg="The Dataset Collection already contains an analysis set with name "+analysis_set_name
-            raise OSError(msg)
-        else:
-            self.analysis_sets[analysis_set_name]=analysis_set
+        #if analysis_set_name in self.analysis_sets:
+        #    msg="The Dataset Collection already contains an analysis set with name "+str(analysis_set_name)
+        #    raise OSError(msg)
+        #else:
+        #    self.analysis_sets[analysis_set_name]=analysis_set
+        self.analysis_sets[analysis_set_name]=analysis_set
 
     def remove_dataset(self,dataset_name):
         if not dataset_name in self.datasets:
-            msg="The Dataset Collection does not contain a dataset named "+dataset_name
+            msg="The Dataset Collection does not contain a dataset named "+str(dataset_name)
             raise OSError(msg)
         else:
             del self.datasets[dataset_name]
 
     def remove_analysis_set(self,analysis_set_name):
         if not analysis_set_name in self.analysis_sets:
-            msg="The Dataset Collection does not contain a dataset named "+analysis_set_name
+            msg="The Dataset Collection does not contain an analysis set named "+str(analysis_set_name)
             raise OSError(msg)
         else:
             del self.analysis_sets[analysis_set_name]

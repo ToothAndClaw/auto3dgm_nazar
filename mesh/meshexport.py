@@ -10,7 +10,7 @@ class MeshExport:
         if format=='ply':
             writer=vtk.vtkPLYWriter()
         if format=='stl':
-            writer=vtk.vtkPLYWriter()
+            writer=vtk.vtkSTLWriter()
         if format=='obj':
             writer=vtk.vtkOBJWriter()
         writer.SetInputData(mesh.polydata)

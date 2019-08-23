@@ -40,7 +40,9 @@ class MeshFactory(object):
                 (vertices, faces)=MeshFactory.off_parser(file_path)
                 return MeshFactory.mesh_from_data(vertices, faces, center_scale=center_scale)
             namelist=file_path.split('/')
-            name=namelist[len(namelist)-1].split('.')[0]
+            name=namelist[len(namelist)-1]
+            Name=name.split('\\')
+            name=Name[len(Name)-1].split('.')[0]
             reader.SetFileName(file_path)
             reader.Update()
             
@@ -60,7 +62,7 @@ class MeshFactory(object):
     def mesh_from_data(vertices, faces=empty([0,0]), name=None, center_scale=False, deep=True):
         """Returns a VTK PolyData object from vertex and face ndarrays"""
         vertices = array(vertices, dtype=float)
-        faces = array(faces, dtype=int)
+        faces = array(faces, dtype='int64')
 
         polydata = vtkPolyData()
 

@@ -11,7 +11,12 @@ from auto3dgm_nazar.jobrun import jobrun
 from auto3dgm_nazar.jobrun import job
 from auto3dgm_nazar.jobrun.jobrun import JobRun
 from auto3dgm_nazar.jobrun.job import Job
-import lap
+
+import os
+if os.name == 'nt':
+    import auto3dgm_nazar.lap_windows as lap
+else:
+    import lap
 
 class Correspondence:
     #params: self,

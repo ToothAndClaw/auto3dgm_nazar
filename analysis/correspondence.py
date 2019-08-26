@@ -1,3 +1,8 @@
+import os
+file_path = os.path.dirname(os.path.abspath(__file__))
+os.environ.setdefault('MOSEKLM_LICENSE_FILE', os.path.join(file_path, '../lib/mosek.lic'))
+
+import mosek
 from numpy import linalg
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance_matrix, KDTree
@@ -6,17 +11,12 @@ from scipy.sparse import csr_matrix, identity, find
 from scipy.sparse.csgraph import minimum_spanning_tree, shortest_path
 import numpy as np
 from pprint import pprint
+
 from auto3dgm_nazar import jobrun
 from auto3dgm_nazar.jobrun import jobrun
 from auto3dgm_nazar.jobrun import job
 from auto3dgm_nazar.jobrun.jobrun import JobRun
 from auto3dgm_nazar.jobrun.job import Job
-
-import os
-if os.name == 'nt':
-    import auto3dgm_nazar.lap_windows as lap
-else:
-    import lap
 
 class Correspondence:
     #params: self,

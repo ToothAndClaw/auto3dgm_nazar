@@ -18,6 +18,8 @@ from auto3dgm_nazar.jobrun import job
 from auto3dgm_nazar.jobrun.jobrun import JobRun
 from auto3dgm_nazar.jobrun.job import Job
 
+import lap
+
 class Correspondence:
     #params: self,
     #meshes: either a mesh object or a list (should be list) or a dictionary of mesh objects

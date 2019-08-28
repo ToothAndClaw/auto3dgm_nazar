@@ -1,24 +1,23 @@
-import os
-file_path = os.path.dirname(os.path.abspath(__file__))
-os.environ.setdefault('MOSEKLM_LICENSE_FILE', os.path.join(file_path, '../lib/mosek.lic'))
-
-import mosek
 from numpy import linalg
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance_matrix, KDTree
 from scipy.optimize import linear_sum_assignment as Hungary
-from scipy.sparse import csr_matrix, identity, find
+from scipy.sparse import csr_matrix, identity, find, lil_matrix, coo_matrix
 from scipy.sparse.csgraph import minimum_spanning_tree, shortest_path
+from scipy import sparse as sp
 import numpy as np
 from pprint import pprint
-
 from auto3dgm_nazar import jobrun
 from auto3dgm_nazar.jobrun import jobrun
 from auto3dgm_nazar.jobrun import job
 from auto3dgm_nazar.jobrun.jobrun import JobRun
 from auto3dgm_nazar.jobrun.job import Job
-
-import lap
+import os
+file_path = os.path.dirname(os.path.abspath(__file__))
+os.environ.setdefault('MOSEKLM_LICENSE_FILE', os.path.join(file_path, '../lib/mosek.lic'))
+import sys
+import mosek
+import pdb
 
 class Correspondence:
     #params: self,
@@ -168,7 +167,7 @@ class Correspondence:
                 P = identity(N, dtype=int)
                 R = np.identity(3)
                 for lj in range(1, len(pat)):
-                    P = P @ Correspondence.permutation_flat_to_sparse(pa_p[pat[lj]][pat[lj-1]])
+                    #P = P @ Correspondence.permutation_flat_to_sparse(pa_p[pat[lj]][pat[lj-1]])
                     R = pa_r[pat[lj], pat[lj-1]] @ R
                 retR[li] = R
                 retP[li] = P
@@ -236,16 +235,16 @@ class Correspondence:
     #        mirror: a flag for whether or not mirror images of the shapes should be considered
     def best_pairwise_PCA_alignment(mesh1, mesh2, mirror):
         R = Correspondence.principal_component_alignment(mesh1, mesh2, mirror)
+        M_0 = np.ones([len(mesh1.vertices), len(mesh1.vertices)])
         permutations = []
         min_cost = np.ones(len(R)) * np.inf
         for rot, i in zip(R, range(len(R))):
             cost = distance_matrix(mesh1.vertices, np.dot(rot, mesh2.vertices.T).T)**2
             # The hungarian algorithm:
-            # V1_ind, V2_ind = linear_sum_assignment(cost)
-            trash, V2_ind, garbage = lap.lapjv(cost)
-            min_cost[i] = trash
-            print('eight rotation error is', np.sqrt(trash))
-            permutations.append(V2_ind)
+            P, d = Correspondence.linassign(M_0, cost)
+            min_cost[i] = d
+            print('eight rotation error is', np.sqrt(d))
+            permutations.append(P)
 
         best_rot_ind = np.argmin(min_cost)
         best_permutation = permutations[best_rot_ind]
@@ -267,9 +266,10 @@ class Correspondence:
     @staticmethod
     def permutation_from_rotation(mesh1, mesh2, R):
         cost = distance_matrix(mesh1.vertices, np.dot(R, mesh2.vertices.T).T)**2
-        trash, V2_ind, garbage = lap.lapjv(cost)
-        #V1_ind, V2_ind = linear_sum_assignment(cost)
-        return V2_ind
+        # The hungarian algorithm:
+        M_0 = np.ones([len(mesh1.vertices), len(mesh1.vertices)])
+        P, d = Correspondence.linassign(M_0, cost)
+        return P, d
 
     @staticmethod
     # Computes the Local Generalized Procrustes Distance between meshes.
@@ -280,10 +280,10 @@ class Correspondence:
             M_0 = np.ones([len(mesh1.vertices), len(mesh1.vertices)])
 
         if R_0 is None:
-            best_permutation, best_rot, d = Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2, mirror)
+            best_permutation, best_rot, best_d = Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2, mirror)
         else:
             best_rot = R_0
-            best_permutation = Correspondence.permutation_from_rotation(mesh1, mesh2, R_0)
+            best_permutation, best_d = Correspondence.permutation_from_rotation(mesh1, mesh2, R_0)
 
         
         print(mesh1.name)
@@ -298,42 +298,46 @@ class Correspondence:
 
         i = 0
         while True:
-            newV2= newV2[:,best_permutation]
-            err = V1 - np.dot(best_rot, newV2)
-            #print("after Hungary", np.linalg.norm(err))
+            newV2= np.squeeze(np.asarray(newV2 @ best_permutation))
+            err1 = V1 - np.dot(best_rot, newV2)
+            print("after Hungary", np.linalg.norm(err1))
             
             # Do Kabsch
             cur_rot = Correspondence.Kabsch(V1.T, newV2.T)
             #newV2 = np.dot(cur_rot, newV2)
-            err = V1 - np.dot(cur_rot, newV2)
-            #print("after Kabsch", np.linalg.norm(err))
+            err2 = V1 - np.dot(cur_rot, newV2)
+            cur_d = np.linalg.norm(err2)
+            print("after Kabsch", np.linalg.norm(err2))
             
             # Do Hungary
-            cur_cost = distance_matrix(V1.T, np.dot(cur_rot, newV2).T)**2
-            cur_trash, cur_permutation, garbage = lap.lapjv(cur_cost)
+            #cur_cost = distance_matrix(V1.T, np.dot(cur_rot, newV2).T)**2
+            gamma = 1.5 * Correspondence.ltwoinf(V1 - newV2)
+            M, MD2 = Correspondence.jrangesearch(V1.T, np.dot(cur_rot, newV2).T, gamma)
+            #pdb.set_trace()
+            #print(M)
+            #cur_trash, cur_permutation, garbage = lap.lapjv(cur_cost)
+            cur_permutation, trash = Correspondence.linassign(M, MD2)
             
             #if i > max_iter or cur_trash - best_trash > 0 or ((abs(cur_trash - best_trash)<1e-5*best_trash)):
-            if np.linalg.norm(err) < 0.00000001 or i > max_iter or np.sum((cur_permutation - best_permutation) != 0) < 1:
+            if cur_d < 0.00000001 or i > max_iter or abs(best_d-cur_d)<0.00000001:
                 break
             else:
-                if i % 1000 == 0:
-                    print('start')
-                    # print("Current error is: ", np.sum((cur_permutation - best_permutation) != 0))
+                if i % 1 == 0:
+                    #print('start')
+                    print("Current error is: ", cur_d)
                     # print("current iteration is:", i)
                     # print("current error is: ", np.sqrt(cur_trash))
             # update
             best_permutation = cur_permutation
             best_rot = cur_rot
+            best_d = cur_d
             i += 1
 
-        #d = np.sum((cur_permutation - best_permutation))
-        d = np.sqrt(cur_trash)
+        d = np.sqrt(best_d)
         Rotate = best_rot
-        print(Rotate)
-        print(d)
+        #print(Rotate)
+        #print(d)
         Permutate = best_permutation
-        gamma = 1.5 * Correspondence.ltwoinf(V1 - newV2)
-
         return {'d': d, 'r': Rotate, 'p': Permutate, 'g': gamma}
 
     @staticmethod
@@ -367,3 +371,125 @@ class Correspondence:
         if not initial_alignment:
             initial_alignment = Correspondence.best_pairwise_PCA_alignment(mesh1=mesh1, mesh2=mesh2, mirror=mirror)
         return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=initial_alignment['r'], M_0=np.ones((n, n)), mirror=mirror)
+
+    @staticmethod
+    def jrangesearch(X,Y,epsilon):
+        I = X.shape[0]
+        J = X.shape[0]
+        MD2 = np.zeros((I, J))
+        #MD2 = [[0 for i in range(I)] for j in range (J)]
+        M = np.ones((I,J))
+        for i in range(I):
+            for j in range(J):
+                A = X[i]
+                B = Y[j]
+                d2 = np.linalg.norm(A-B)**2
+                MD2[i][j]=d2
+                if (d2>epsilon):
+                    M[i,j]=0
+        #MD2 = np.asarray(MD2)
+        #M = lil_matrix(M)
+        return(M,MD2)
+    
+    '''
+    @staticmethod
+    def ltwoinf(X):
+        Y = np.sqrt(max(np.sum(np.multiply(X,X),axis=0)))
+        return Y
+    '''
+
+    @staticmethod
+    def linassign(A, D):
+        N = A.shape[0]
+        if np.array_equal(A, np.ones((N, N))):
+            rowId, colId = Hungary(D)
+            P = sp.coo_matrix((np.ones(N),(rowId,colId)),shape=(N, N))
+            P = P.T
+            d = D[rowId, colId].sum()
+        else:
+            #use mosek to speed up
+            A = lil_matrix(A)
+            tmpD = np.reshape(D.T, (N*N))
+            tmpA = np.reshape(A.T, (N*N))
+            ivars = np.nonzero(tmpA)
+            ivars = ivars[1]
+            n_vars = len(ivars)
+            #pdb.set_trace()
+            
+            # mosek enviroment
+            inf = 0.0
+            
+            # Define a stream printer to grab output from MOSEK
+            def streamprinter(text):
+                sys.stdout.write(text)
+                sys.stdout.flush()
+            
+            numvar = n_vars
+            numcon = 2 * N
+            
+            # Make mosek environment
+            with mosek.Env() as env:
+                # Create a task object
+                with env.Task(0, 0) as task:
+                    # Attach a log stream printer to the task
+                    #task.set_Stream(mosek.streamtype.log, streamprinter)
+                    
+                    #build equality constraints for all variables
+                    Aeq1 = np.kron(np.eye(N), np.ones(N))
+                    Aeq2 = np.kron(np.ones(N), np.eye(N))
+                    Aeq = np.concatenate((Aeq1, Aeq2), axis = 0)
+                    
+                    #reduce the number of variables using ivars
+                    Aeq_red = Aeq[:, ivars]
+                    Asparse = Aeq_red
+                    #Asparse = lil_matrix(Aeq_red)
+                    dissimilarity_for_lp_red = tmpD[ivars]
+                    c = dissimilarity_for_lp_red
+                    
+                    #positivity constraints and rhs of equality constraints
+                    task.appendcons(numcon)
+                    
+                    # Append 'numvar' variables.
+                    # The variables will initially be fixed at zero (x=0).
+                    task.appendvars(numvar)
+                    
+                    # Input A
+                    Arows, Acols, Avals = find(Asparse)
+                    task.putaijlist(Arows, Acols, Avals)
+                    
+                    # Input c
+                    ccols = list(range(numvar))
+                    task.putclist(ccols, c)
+                    
+                    # Input constraints
+                    task.putconboundlistconst(range(numcon), mosek.boundkey.fx, 1, 1)
+                    
+                    # Input bounds
+                    task.putvarboundlistconst(range(numvar), mosek.boundkey.lo, 0, +inf)
+                    
+                    # Input the objective sense (minimize/maximize)
+                    task.putobjsense(mosek.objsense.minimize)
+                    
+                    # Input optimizer
+                    task.putintparam(mosek.iparam.optimizer, mosek.optimizertype.primal_simplex)
+                    
+                    # Solve the problem
+                    task.optimize()
+                    
+                    # Print a summary containing information
+                    # about the solution for debugging purposes
+                    #task.solutionsummary(mosek.streamtype.msg)
+                    
+                    # Get status information about the solution
+                    #solsta = task.getsolsta(mosek.soltype.bas)
+                    
+                    # Output the xx
+                    xx = [0.] * numvar
+                    task.getxx(mosek.soltype.bas, # Request the basic solution.
+                               xx)
+                    
+                    d = task.getprimalobj(mosek.soltype.bas)
+                    P = sp.coo_matrix((xx,(ivars, np.zeros(n_vars))),shape=(N*N, 1))
+                    P = np.reshape(P, (N, N))
+                    P = P.T
+        return P, d

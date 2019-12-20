@@ -1,10 +1,12 @@
 from numpy import linalg
 from scipy.optimize import linear_sum_assignment
-from scipy.spatial import distance_matrix, KDTree
+from scipy.spatial import distance_matrix, KDTree, distance
 from scipy.optimize import linear_sum_assignment as Hungary
 from scipy.sparse import csr_matrix, identity, find, lil_matrix, coo_matrix
 from scipy.sparse.csgraph import minimum_spanning_tree, shortest_path
 from scipy import sparse as sp
+from scipy.sparse.linalg import norm
+from scipy import square
 import numpy as np
 from pprint import pprint
 from auto3dgm_nazar import jobrun
@@ -18,6 +20,8 @@ os.environ.setdefault('MOSEKLM_LICENSE_FILE', os.path.join(file_path, '../lib/mo
 import sys
 import mosek
 import pdb
+from mosek.fusion import *
+import scipy.io as sio
 
 class Correspondence:
     #params: self,
@@ -151,7 +155,8 @@ class Correspondence:
         the global alignment obtained by propagating the tree as a list
         '''
         n = len(tree)
-        [r, c] = np.nonzero(tree)
+        tree = tree + tree.T
+        [c, r] = np.nonzero(tree)
         mm = min(r[0], c[0])
         MM = max(r[0], c[0])
         pa_r = pa['r']
@@ -167,8 +172,13 @@ class Correspondence:
                 P = identity(N, dtype=int)
                 R = np.identity(3)
                 for lj in range(1, len(pat)):
+                    if pat[lj-1] > pat[lj]:
                     #P = P @ Correspondence.permutation_flat_to_sparse(pa_p[pat[lj]][pat[lj-1]])
-                    R = pa_r[pat[lj], pat[lj-1]] @ R
+                        P = P @ pa_p[pat[lj]][pat[lj-1]]
+                        R = pa_r[pat[lj], pat[lj-1]] @ R
+                    else:
+                        P = P @ pa_p[pat[lj-1]][pat[lj]].transpose()
+                        R = pa_r[pat[lj-1], pat[lj]].transpose() @ R
                 retR[li] = R
                 retP[li] = P
         return {'r': retR, 'p': retP}               
@@ -201,17 +211,10 @@ class Correspondence:
     # params: mesh1, mesh2 meshes that have vertices that are 3 x n matrices
     #        mirror: a flag for whether or not mirror images of the shapes should be considered
     def principal_component_alignment(mesh1, mesh2, mirror):
-        mirror = 1
         X = mesh1.vertices.T
         Y = mesh2.vertices.T
-        #print(X)
-        #print(Y)
         UX, DX, VX = linalg.svd(X, full_matrices=False)
         UY, DY, VY = linalg.svd(Y, full_matrices=False)
-        #print(UX)
-        #print(UY)
-        #print(UX.T)
-        #print(UY.T)
         P=[]
         R=[]
 
@@ -227,13 +230,16 @@ class Correspondence:
         for i in P:
             R.append(np.dot(np.dot(UX, np.diag(i)), UY.T))
         return R
-
+    
+    '''
     @staticmethod
     # Computes the best possible initial alignment for meshes 1 and 2
     # Mesh 1 is used as the reference
     # params: mesh1, mesh2 meshes that have vertices that are 3 x n matrices
     #        mirror: a flag for whether or not mirror images of the shapes should be considered
     def best_pairwise_PCA_alignment(mesh1, mesh2, mirror):
+        #print(mesh1.name)
+        #print(mesh2.name)
         R = Correspondence.principal_component_alignment(mesh1, mesh2, mirror)
         M_0 = np.ones([len(mesh1.vertices), len(mesh1.vertices)])
         permutations = []
@@ -252,6 +258,7 @@ class Correspondence:
         d = min_cost[best_rot_ind]
 
         return {'p': best_permutation, 'r': best_rot, 'd': d}
+    '''
 
     @staticmethod
     # Returns the meshed aligned by the initial PCA component pairing.
@@ -265,81 +272,84 @@ class Correspondence:
 
     @staticmethod
     def permutation_from_rotation(mesh1, mesh2, R):
-        cost = distance_matrix(mesh1.vertices, np.dot(R, mesh2.vertices.T).T)**2
+        #cost = distance_matrix(mesh1.vertices, np.dot(R, mesh2.vertices.T).T)**2
         # The hungarian algorithm:
-        M_0 = np.ones([len(mesh1.vertices), len(mesh1.vertices)])
-        P, d = Correspondence.linassign(M_0, cost)
+        #M_0 = np.ones([len(mesh1.vertices), len(mesh1.vertices)])
+        #P, d = Correspondence.linassign(M_0, cost)
+        V1 = mesh1.vertices.T
+        V2 = mesh2.vertices.T
+        gamma = 1.5 * Correspondence.ltwoinf(V1.T - np.dot(R, V2).T)
+        M, MD2 = Correspondence.jrangesearch(V1.T, np.dot(R, V2).T, gamma)
+        P, d = Correspondence.linassign(M, MD2)
         return P, d
 
     @staticmethod
     # Computes the Local Generalized Procrustes Distance between meshes.
     # NOTE: Params R_0, M_0 needs specification.
     def locgpd(mesh1, mesh2, R_0=None, M_0=None, max_iter=1000, mirror=False):
-        # best_permutation and best_rot come from PCA
-        if M_0 is None:
-            M_0 = np.ones([len(mesh1.vertices), len(mesh1.vertices)])
-
-        if R_0 is None:
-            best_permutation, best_rot, best_d = Correspondence.best_pairwise_PCA_alignment(mesh1, mesh2, mirror)
-        else:
-            best_rot = R_0
-            best_permutation, best_d = Correspondence.permutation_from_rotation(mesh1, mesh2, R_0)
-
-        
+        # print out which mesh to work with
         print(mesh1.name)
         print(mesh2.name)
-        #print(best_rot)
-        #print(best_permutation)
-
+        # number of vertices
+        N = len(mesh1.vertices)
+        # V1 and V2 are of size 3 * N
         V1 = mesh1.vertices.T
         V2 = mesh2.vertices.T
-        #newV2 = np.dot(best_rot, V2)
-        newV2 = V2
-
-        i = 0
-        while True:
-            newV2= np.squeeze(np.asarray(newV2 @ best_permutation))
-            err1 = V1 - np.dot(best_rot, newV2)
-            print("after Hungary", np.linalg.norm(err1))
-            
+        if M_0 is None:
+            M_0 = np.ones([N, N])
+        # compute distance
+        D = distance.cdist(V1.T, np.dot(R_0, V2).T)
+        MD2 = square(D)
+        # compute initial mappings and correspondences
+        P_0, trash = Correspondence.linassign(M_0, MD2)
+        # compute loops
+        P = P_0; R = R_0; d = np.linalg.norm(V1 - np.dot(R, V2@P));
+        P_prev = sp.eye(N); gamma = 0;
+        i = 0;
+        while np.linalg.norm((abs(P-P_prev).sum(axis=0)).sum(axis=1)) > 0:
+            # norm(P - P_prev) 
+            i += 1
+            P_prev = P; R_prev = R; d_prev = d;
             # Do Kabsch
-            cur_rot = Correspondence.Kabsch(V1.T, newV2.T)
-            #newV2 = np.dot(cur_rot, newV2)
-            err2 = V1 - np.dot(cur_rot, newV2)
-            cur_d = np.linalg.norm(err2)
-            print("after Kabsch", np.linalg.norm(err2))
-            
+            newV2 = V2 @ P_prev
+            R = Correspondence.Kabsch(V1.T, newV2.T)
+            d = np.linalg.norm(V1 - np.dot(R, newV2))
             # Do Hungary
-            #cur_cost = distance_matrix(V1.T, np.dot(cur_rot, newV2).T)**2
-            gamma = 1.5 * Correspondence.ltwoinf(V1 - newV2)
-            M, MD2 = Correspondence.jrangesearch(V1.T, np.dot(cur_rot, newV2).T, gamma)
-            #pdb.set_trace()
-            #print(M)
-            #cur_trash, cur_permutation, garbage = lap.lapjv(cur_cost)
-            cur_permutation, trash = Correspondence.linassign(M, MD2)
-            
-            #if i > max_iter or cur_trash - best_trash > 0 or ((abs(cur_trash - best_trash)<1e-5*best_trash)):
-            if cur_d < 0.00000001 or i > max_iter or abs(best_d-cur_d)<0.00000001:
+            gamma = 1.5 * Correspondence.ltwoinf(V1 - np.dot(R, newV2))
+            M, MD2 = Correspondence.jrangesearch(V1.T, np.dot(R, V2).T, gamma)
+            P, trash = Correspondence.linassign(M, MD2)
+            #d = np.linalg.norm(V1 - np.dot(R, V2@P))
+
+            if i > max_iter or abs(d_prev-d)< (0.00001 * d_prev):
                 break
             else:
                 if i % 1 == 0:
-                    #print('start')
-                    print("Current error is: ", cur_d)
-                    # print("current iteration is:", i)
-                    # print("current error is: ", np.sqrt(cur_trash))
-            # update
-            best_permutation = cur_permutation
-            best_rot = cur_rot
-            best_d = cur_d
-            i += 1
+                    print("Current error is: ", d)
+        return {'d': d, 'r': R, 'p': P, 'g': gamma}
 
-        d = np.sqrt(best_d)
-        Rotate = best_rot
-        #print(Rotate)
-        #print(d)
-        Permutate = best_permutation
-        return {'d': d, 'r': Rotate, 'p': Permutate, 'g': gamma}
-
+    @staticmethod
+    def gpd(mesh1, mesh2, mirror=False):
+        R_0 = Correspondence.principal_component_alignment(mesh1, mesh2, mirror)
+        M_0 = np.ones([len(mesh1.vertices), len(mesh1.vertices)])
+        tst_P = []
+        tst_R = []
+        tst_d = np.ones(len(R_0)) * np.inf
+        tst_gamma = np.ones(len(R_0)) * np.inf
+        
+        for rot, i in zip(R_0, range(len(R_0))):
+            temp = Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=rot, M_0=M_0, max_iter=1000, mirror=False)
+            tst_P.append(temp['p'])
+            tst_R.append(temp['r'])
+            tst_d[i] = temp['d']
+            tst_gamma[i] = temp['g']
+            
+        best_ind = np.argmin(tst_d)
+        P = tst_P[best_ind]
+        R = tst_R[best_ind]
+        d = tst_d[best_ind]
+        gamma = tst_gamma[best_ind]
+        return {'d': d, 'r': R, 'p': P, 'g': gamma}
+        
     @staticmethod
     def ltwoinf(X):
         """l2-inf norm of x, i.e.the maximum 12 norm of the columns of x"""
@@ -365,31 +375,35 @@ class Correspondence:
         R = np.dot(U, Vt)
         return R
 
+    '''
     @staticmethod
     def align(mesh1, mesh2, mirror, initial_alignment=None):
         n = len(mesh1.vertices)
         if not initial_alignment:
             initial_alignment = Correspondence.best_pairwise_PCA_alignment(mesh1=mesh1, mesh2=mesh2, mirror=mirror)
         return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=initial_alignment['r'], M_0=np.ones((n, n)), mirror=mirror)
-
+    '''
+    
+    @staticmethod
+    def align(mesh1, mesh2, mirror, initial_alignment=None):
+        n = len(mesh1.vertices)
+        if not initial_alignment:
+            return Correspondence.gpd(mesh1=mesh1, mesh2=mesh2, mirror=mirror)
+        else:
+            return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=initial_alignment['r'], M_0=np.ones((n, n)), mirror=mirror)
+    
     @staticmethod
     def jrangesearch(X,Y,epsilon):
+        D = distance.cdist(X, Y)
+        MD2full = square(D)
+        r, c, v = find(D<epsilon)
+        dM = np.ones(r.shape)
+        dMD2 = MD2full[r,c]
         I = X.shape[0]
-        J = X.shape[0]
-        MD2 = np.zeros((I, J))
-        #MD2 = [[0 for i in range(I)] for j in range (J)]
-        M = np.ones((I,J))
-        for i in range(I):
-            for j in range(J):
-                A = X[i]
-                B = Y[j]
-                d2 = np.linalg.norm(A-B)**2
-                MD2[i][j]=d2
-                if (d2>epsilon):
-                    M[i,j]=0
-        #MD2 = np.asarray(MD2)
-        #M = lil_matrix(M)
-        return(M,MD2)
+        M = sp.csr_matrix((dM, (r, c)),shape=(I,I))
+        MD2 = sp.csr_matrix((dMD2, (r, c)),shape=(I,I))
+        return (M, MD2)
+    
     
     '''
     @staticmethod
@@ -401,95 +415,65 @@ class Correspondence:
     @staticmethod
     def linassign(A, D):
         N = A.shape[0]
-        if np.array_equal(A, np.ones((N, N))):
+        if not sp.isspmatrix(A):
+            print('nonSparseHungary')
             rowId, colId = Hungary(D)
             P = sp.coo_matrix((np.ones(N),(rowId,colId)),shape=(N, N))
             P = P.T
             d = D[rowId, colId].sum()
         else:
-            #use mosek to speed up
-            A = lil_matrix(A)
-            tmpD = np.reshape(D.T, (N*N))
-            tmpA = np.reshape(A.T, (N*N))
-            ivars = np.nonzero(tmpA)
-            ivars = ivars[1]
-            n_vars = len(ivars)
-            #pdb.set_trace()
-            
-            # mosek enviroment
-            inf = 0.0
-            
-            # Define a stream printer to grab output from MOSEK
-            def streamprinter(text):
-                sys.stdout.write(text)
-                sys.stdout.flush()
-            
-            numvar = n_vars
-            numcon = 2 * N
-            
-            # Make mosek environment
-            with mosek.Env() as env:
-                # Create a task object
-                with env.Task(0, 0) as task:
-                    # Attach a log stream printer to the task
-                    #task.set_Stream(mosek.streamtype.log, streamprinter)
-                    
-                    #build equality constraints for all variables
-                    Aeq1 = np.kron(np.eye(N), np.ones(N))
-                    Aeq2 = np.kron(np.ones(N), np.eye(N))
-                    Aeq = np.concatenate((Aeq1, Aeq2), axis = 0)
-                    
-                    #reduce the number of variables using ivars
-                    Aeq_red = Aeq[:, ivars]
-                    Asparse = Aeq_red
-                    #Asparse = lil_matrix(Aeq_red)
-                    dissimilarity_for_lp_red = tmpD[ivars]
+            if np.array_equal(A.todense(), np.ones((N, N))):
+                print('Hungary')
+                rowId, colId = Hungary(D.todense())
+                P = sp.coo_matrix((np.ones(N),(rowId,colId)),shape=(N, N))
+                P = P.T
+                d = D[rowId, colId].sum()
+            elif np.array_equal(A.todense(), np.zeros((N, N))):
+                P = sp.eye(N)
+                d = 0
+            else:
+                #use mosek to speed up
+                ### identify number of variables
+                print('Mosek')
+                tmpD = np.reshape(D, (N*N))
+                zerovars, ivars, dissimilarity_for_lp_red = find(tmpD)
+                n_vars = ivars.shape[0]
+                
+                ### build the constraint matrix A indicating all rows and columns of P should sum to 1
+                Aeq1 = sp.kron(sp.eye(N), np.ones(N))
+                Aeq2 = sp.kron(np.ones(N), sp.eye(N))
+                Aeq = sp.vstack([Aeq1, Aeq2])
+                
+                ### convert to csc matrix and reduce size
+                Aeq = Aeq.tocsc()
+                Aeq_red = Aeq[:, ivars]
+                rows, cols, values = find(Aeq_red)
+                
+                ### send to mosek optimization
+                with Model('example') as M:
+                    # Create variable 'x' of length n_vars
+                    x = M.variable("x", n_vars, Domain.greaterThan(0.))
+                    # Create constraints
+                    A = Matrix.sparse(2*N, n_vars, rows, cols, values)
+                    M.constraint(Expr.mul(A, x), Domain.equalsTo(1.))
+                    # Set the objective funciton to (c^t * x)
                     c = dissimilarity_for_lp_red
-                    
-                    #positivity constraints and rhs of equality constraints
-                    task.appendcons(numcon)
-                    
-                    # Append 'numvar' variables.
-                    # The variables will initially be fixed at zero (x=0).
-                    task.appendvars(numvar)
-                    
-                    # Input A
-                    Arows, Acols, Avals = find(Asparse)
-                    task.putaijlist(Arows, Acols, Avals)
-                    
-                    # Input c
-                    ccols = list(range(numvar))
-                    task.putclist(ccols, c)
-                    
-                    # Input constraints
-                    task.putconboundlistconst(range(numcon), mosek.boundkey.fx, 1, 1)
-                    
-                    # Input bounds
-                    task.putvarboundlistconst(range(numvar), mosek.boundkey.lo, 0, +inf)
-                    
-                    # Input the objective sense (minimize/maximize)
-                    task.putobjsense(mosek.objsense.minimize)
-                    
-                    # Input optimizer
-                    task.putintparam(mosek.iparam.optimizer, mosek.optimizertype.primal_simplex)
-                    
+                    M.objective("obj", ObjectiveSense.Minimize, Expr.dot(c, x))
                     # Solve the problem
-                    task.optimize()
-                    
-                    # Print a summary containing information
-                    # about the solution for debugging purposes
-                    #task.solutionsummary(mosek.streamtype.msg)
-                    
-                    # Get status information about the solution
-                    #solsta = task.getsolsta(mosek.soltype.bas)
-                    
-                    # Output the xx
-                    xx = [0.] * numvar
-                    task.getxx(mosek.soltype.bas, # Request the basic solution.
-                               xx)
-                    
-                    d = task.getprimalobj(mosek.soltype.bas)
-                    P = sp.coo_matrix((xx,(ivars, np.zeros(n_vars))),shape=(N*N, 1))
-                    P = np.reshape(P, (N, N))
-                    P = P.T
-        return P, d
+                    M.solve()
+                    #Get the solution values
+                    sol = x.level()
+                # retrive solution
+                P_red = sol
+                d = np.dot(c, sol)
+                # iron the numerical wrinkles
+                P_red[sol<0.1] = 0
+                temp1 = np.zeros(n_vars)
+                tempP = sp.csr_matrix((P_red, (ivars, temp1)),shape=(N*N,1))
+                tempP.shape
+                P = np.reshape(tempP, (N, N))
+                P = P.T
+        return (P, d)
+
+
+

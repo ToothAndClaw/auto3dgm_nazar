@@ -288,8 +288,10 @@ class Correspondence:
     # NOTE: Params R_0, M_0 needs specification.
     def locgpd(mesh1, mesh2, R_0=None, M_0=None, max_iter=1000, mirror=False):
         # print out which mesh to work with
+
         #print(mesh1.name)
         #print(mesh2.name)
+
         # number of vertices
         N = len(mesh1.vertices)
         # V1 and V2 are of size 3 * N
@@ -416,14 +418,12 @@ class Correspondence:
     def linassign(A, D):
         N = A.shape[0]
         if not sp.isspmatrix(A):
-            #print('nonSparseHungary')
             rowId, colId = Hungary(D)
             P = sp.coo_matrix((np.ones(N),(rowId,colId)),shape=(N, N))
             P = P.T
             d = D[rowId, colId].sum()
         else:
             if np.array_equal(A.todense(), np.ones((N, N))):
-                #print('Hungary')
                 rowId, colId = Hungary(D.todense())
                 P = sp.coo_matrix((np.ones(N),(rowId,colId)),shape=(N, N))
                 P = P.T
@@ -437,6 +437,7 @@ class Correspondence:
                 #print('Mosek')
                 #print(D)
                 tmpD = np.reshape(D, (1, N*N))
+
                 zerovars, ivars, dissimilarity_for_lp_red = find(tmpD)
                 n_vars = ivars.shape[0]
                 

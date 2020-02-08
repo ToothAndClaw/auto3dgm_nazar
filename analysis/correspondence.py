@@ -72,10 +72,10 @@ class Correspondence:
             self.r_ret[key[0]][key[1]] = self.results_dict[key]['r']
         self.pairwise_alignment = {'d': self.d_ret, 'r': self.r_ret, 'p': self.p_ret}    
 
-        print('+++++')
-        print(self.d_ret)
+        #print('+++++')
+        #print(self.d_ret)
         #print(self.p_ret)
-        print(self.r_ret)
+        #print(self.r_ret)
 
         if self.globalizeparam:
             self.mst_matrix = Correspondence.find_mst(self.d_ret)
@@ -288,8 +288,10 @@ class Correspondence:
     # NOTE: Params R_0, M_0 needs specification.
     def locgpd(mesh1, mesh2, R_0=None, M_0=None, max_iter=1000, mirror=False):
         # print out which mesh to work with
-        print(mesh1.name)
-        print(mesh2.name)
+
+        #print(mesh1.name)
+        #print(mesh2.name)
+
         # number of vertices
         N = len(mesh1.vertices)
         # V1 and V2 are of size 3 * N
@@ -323,7 +325,7 @@ class Correspondence:
             if i > max_iter or abs(d_prev-d)< (0.00001 * d_prev):
                 break
             else:
-                if i % 1 == 0:
+                if i % 100 == 0:
                     print("Current error is: ", d)
         return {'d': d, 'r': R, 'p': P, 'g': gamma}
 
@@ -416,14 +418,12 @@ class Correspondence:
     def linassign(A, D):
         N = A.shape[0]
         if not sp.isspmatrix(A):
-            print('nonSparseHungary')
             rowId, colId = Hungary(D)
             P = sp.coo_matrix((np.ones(N),(rowId,colId)),shape=(N, N))
             P = P.T
             d = D[rowId, colId].sum()
         else:
             if np.array_equal(A.todense(), np.ones((N, N))):
-                print('Hungary')
                 rowId, colId = Hungary(D.todense())
                 P = sp.coo_matrix((np.ones(N),(rowId,colId)),shape=(N, N))
                 P = P.T
@@ -434,8 +434,10 @@ class Correspondence:
             else:
                 #use mosek to speed up
                 ### identify number of variables
-                print('Mosek')
-                tmpD = np.reshape(D, (N*N))
+                #print('Mosek')
+                #print(D)
+                tmpD = np.reshape(D, (1, N*N))
+
                 zerovars, ivars, dissimilarity_for_lp_red = find(tmpD)
                 n_vars = ivars.shape[0]
                 

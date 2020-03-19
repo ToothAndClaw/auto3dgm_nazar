@@ -5,6 +5,7 @@ from numpy import array, ndarray, concatenate, empty, full
 #from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk, numpy_to_vtkIdTypeArray
 from tvtk.api import tvtk
 from warnings import warn
+import numpy as np
 
 
 class MeshFactory(object):
@@ -39,7 +40,9 @@ class MeshFactory(object):
                 reader = tvtk.STLReader()
             elif splitext(file_path)[1] == '.off':
                 (vertices, faces)=MeshFactory.off_parser(file_path)
-                return MeshFactory.mesh_from_data(vertices, faces, center_scale=center_scale)
+                namelist=file_path.split('/')
+                name=namelist[len(namelist)-1].split('.')[0]
+                return MeshFactory.mesh_from_data(vertices, faces, name=name, center_scale=center_scale)
             namelist=file_path.split('/')
             name=namelist[len(namelist)-1].split('.')[0]
             reader.file_name=file_path
@@ -88,7 +91,7 @@ class MeshFactory(object):
 
     @staticmethod
     def off_parser(file_path):
-        file=open("file_path","r")
+        file=open(file_path,"r")
         # Checking we have valid headers
         A=file.readline().split()
         if A[0] != 'OFF':
@@ -96,7 +99,7 @@ class MeshFactory(object):
             raise TypeError(msg)
         #Reading in the number of vertices, faces and edges, and pre-formatting their arrays
         (V,F,E)=map(int,file.readline().strip().split(' '))
-        vertices=empty([V,3])
+        vertices=empty([V,3], dtype=np.float32)
         faces=empty([F,3])
         # Read in the vertices
         for i in range(0,V):
@@ -114,4 +117,5 @@ class MeshFactory(object):
                 print("Warning: The .off file contains a face that is defined to be non-triangular. It is a valid triangle, reading it as a triangle.")
             faces[i]=line[1:4]
         #TODO Once the correct format for mesh_from_data face array is clarified, decide if faces should be transposed or not
+        vertices.astype(np.float32)
         return(vertices, faces.T)

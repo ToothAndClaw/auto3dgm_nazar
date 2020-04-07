@@ -3,8 +3,8 @@ import sys
 import numpy as np
 import pdb
 
-low_res = 100
-high_res = 200
+low_res = 10
+high_res = 20
 np.set_printoptions(suppress=True)
 np.set_printoptions(precision=4)
 dataset_coll = auto3dgm_nazar.dataset.datasetfactory.DatasetFactory.ds_from_dir("auto3dgm_nazar/tests/fixtures/sample", center_scale=False)

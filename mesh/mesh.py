@@ -12,6 +12,7 @@ class Mesh:
         self.name = name
         self.initial_centroid = self.centroid
         self.initial_scale = self.scale
+        self.initial_vertices = self.vertices
         
         if center_scale:
             self.center()

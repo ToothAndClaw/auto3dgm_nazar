@@ -38,7 +38,9 @@ class MeshFactory(object):
                 reader = vtkSTLReader()
             elif splitext(file_path)[1] == '.off':
                 (vertices, faces)=MeshFactory.off_parser(file_path)
-                return MeshFactory.mesh_from_data(vertices, faces, center_scale=center_scale)
+                namelist=file_path.split('/')
+                name=namelist[len(namelist)-1].split('.')[0]						 
+                return MeshFactory.mesh_from_data(vertices, faces, name=name, center_scale=center_scale)
             namelist=file_path.split('/')
             name=namelist[len(namelist)-1]
             Name=name.split('\\')
@@ -84,7 +86,7 @@ class MeshFactory(object):
 
     @staticmethod
     def off_parser(file_path):
-        file=open("hammas.off","r")
+        file=open(file_path,"r")
         # Checking we have valid headers
         A=file.readline().split()
         if A[0] != 'OFF':
@@ -110,4 +112,4 @@ class MeshFactory(object):
                 print("Warning: The .off file contains a face that is defined to be non-triangular. It is a valid triangle, reading it as a triangle.")
             faces[i]=line[1:4]
         #TODO Once the correct format for mesh_from_data face array is clarified, decide if faces should be transposed or not
-        return(vertices, faces.T)
+        return(vertices, faces)

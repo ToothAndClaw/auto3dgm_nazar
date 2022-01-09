@@ -21,7 +21,7 @@ TODO: Please fix this comment
 "and number of points and returns a subsampled mesh"
 """
 
-import vtk 
+from tvtk.api import tvtk 
 from numpy import all, amin, any, argmax, array, isclose, ndarray, where, empty
 import random
 from scipy.spatial.distance import cdist
@@ -35,31 +35,29 @@ from auto3dgm_nazar.jobrun.jobrun import JobRun
 from auto3dgm_nazar.jobrun.job import Job
 
 class Subsample:
-    def __init__(self, pointNumber=None, method=None, meshes=None, seed={}, center_scale=False):
+    def __init__(self, pointNumber=None, method=None, meshes=None, curSeed=dict(), center_scale=False):
+        
         self.pointNumber=pointNumber
         self.pointNumber.sort()
-        print(self.pointNumber)
         self.method=method
         self.meshes=meshes
         ret = {}
+        
         for singlePoint in self.pointNumber:
             #assumes all entries in list of pointNumbers are unique
-            job = self.prepare_analysis(point_number=singlePoint, method=method, seed=seed)
-            results = self.export_analysis(job=job)
-            ret[singlePoint] = {'output': results}
+            job = self.prepare_analysis(point_number=singlePoint, method=method, curSeed=curSeed)
+            results = self.export_analysis(job)
+            ret[singlePoint] = results
+            
             for key in results['output']:
                 #keys should be mesh names
-                seed[results['output'][key].name] = results['output'][key].vertices
-                if center_scale:
-                    results['output'][key].center()
-                    results['output'][key].scale_unit_norm()
-
+                curSeed[results['output'][key].name] = results['output'][key].vertices
         self.ret = ret
 
-    def prepare_analysis(self, point_number=None, method='FPS', seed={}, center_scale=False):
+    def prepare_analysis(self, point_number=None, method='FPS', curSeed=dict(), center_scale=False):
         #Create Job
         job_data = Subsample.generate_data(meshes=self.meshes)
-        job_params = Subsample.generate_params(point_number=point_number, subsample_method=self.method, seed=seed, center_scale=center_scale, meshes=self.meshes)
+        job_params = Subsample.generate_params(point_number=point_number, subsample_method=self.method, curSeed=curSeed, center_scale=center_scale, meshes=self.meshes)
         job_func = self.generate_func(func=method)
         #print("mark")
         #print(job_func)
@@ -84,7 +82,7 @@ class Subsample:
         return ret
 
     @staticmethod
-    def generate_params(point_number=None, subsample_method=None, seed={}, center_scale=False, meshes=None):
+    def generate_params(point_number=None, subsample_method=None, curSeed=dict(), center_scale=True, meshes=None):
         #dict of params, issue with the fucntion reference?
         '''
         {
@@ -98,14 +96,15 @@ class Subsample:
         ret = {}
         ret['n'] = point_number
         seed_t = {}
+        
         #print("In generate params")
         #print(seed)
         for mesh in meshes:
-            if mesh.name not in seed.keys():
+            if mesh.name not in curSeed.keys():
                 seed_t[mesh.name] = empty([0,0])
             else:
-                seed_t[mesh.name] = seed[mesh.name]
-        ret['seed'] = seed_t
+                seed_t[mesh.name] = curSeed[mesh.name]
+        ret['curSeed'] = seed_t
         ret['center_scale'] = center_scale
         return ret
 
@@ -124,22 +123,24 @@ class Subsample:
         return jobrun.execute_jobs()
 
     @staticmethod
-    def far_point_subsample(mesh, n, seed=None, center_scale=False):
+    def far_point_subsample(mesh, n, curSeed=None, center_scale=False):
         # seed should be a dict with key mesh name and value list of seed vertices N x 3 (where N is number of points)
         # return val is mesh object that I wrote
         v = mesh.vertices
-        if seed is None:
+        print(mesh.name,flush=True)
+        if curSeed is None:
             seed_t = np.empty([0,0])
         else:
-            seed_t = seed[mesh.name]
-
+            seed_t = curSeed[mesh.name]
+        
         if n > v.shape[0] or n < seed_t.shape[0]:
             raise ValueError('n larger than number of vertices or smaller than number of seed_t points')
 
+        
         if isinstance(seed_t, ndarray) and seed_t.size and v.shape[1] == 3 and v.ndim == 2:
             if seed_t.ndim == 1 and seed_t.shape[0] == 3:
                 seed_t = np.array([seed_t])
-            # are s in v (or close enough?)
+            # are s in v (or close enough?) Check why this exists
             if all([any(all(isclose(x, v), 1)) for x in seed_t]):
                 # get ind for seed_t points
                 subidx = [where(all(isclose(x, v), axis=1))[0][0] for x in seed_t]
@@ -152,7 +153,8 @@ class Subsample:
         for i in range(len(subidx),n):
             subidx.append(argmax(amin(cdist(v[subidx], v), axis=0)))
         # list of integers that subsampled
-        return MeshFactory.mesh_from_data(v[subidx], center_scale=center_scale, name=mesh.name)
+        newMesh=MeshFactory.mesh_from_data(v[subidx], center_scale=False, name=mesh.name)
+        return newMesh
 
     # far_point_subsample('mesh') TODO: What is this
      

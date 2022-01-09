@@ -1,5 +1,5 @@
 import vtk
-import os
+from tvtk.api import tvtk
 
 class MeshExport:
 
@@ -14,7 +14,8 @@ class MeshExport:
             writer=vtk.vtkSTLWriter()
         if format=='obj':
             writer=vtk.vtkOBJWriter()
-        writer.SetInputData(mesh.polydata)
-        writer.SetFileName(os.path.join(fp, name+"."+format))
+        polydata=tvtk.to_vtk(mesh.polydata)
+        writer.SetInputData(polydata)
+        writer.SetFileName(fp+name+"."+format)
         writer.Write()    
         return(True)

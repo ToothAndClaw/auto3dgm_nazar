@@ -1,3 +1,13 @@
+import pdb
+import traceback
+from auto3dgm_nazar.jobrun.multi import Multi
+#from multiprocessing import Pool
+from pathos.multiprocessing import ProcessingPool as Pool
+import logging
+import multiprocessing as mp
+from tvtk.api import tvtk
+import psutil
+logger = mp.log_to_stderr(logging.INFO)
 class JobRun(object):
     """Runs batch tasks in single core, multi core, or cluster environments 
 
@@ -37,8 +47,28 @@ class JobRun(object):
         else:
             raise ValueError('Current mode ({}) not an allowed mode: {}'.format(
                 self.__mode, self.allowed_modes))
-
     def run_single(self):
+        """Run jobs locally using a single core"""
+        job_dict = {
+            'output': {},
+            'input': self.job
+        }
+        results_dict = {}
+        parametrit=[]
+        for t in self.job.data.values():
+            d=dict()
+            d['func']=self.job.func
+            d['data']=t
+            d['params']=self.job.params
+            parametrit.append(d)
+        pool=Pool(psutil.cpu_count(logical=False))
+        results=pool.map(Multi.multi_run_wrapper,parametrit)
+        
+        results_dict=dict(zip(self.job.data.keys(), results))
+        job_dict['output'] = results_dict
+        return job_dict
+
+    def run_multi(self):
         """Run jobs locally using a single core"""
         job_dict = {
             'output': {},
@@ -50,13 +80,11 @@ class JobRun(object):
             """here, key is a tuple representing the initial indices of the mesh_list from Correspondence"""
             #print("workds")
             #print(self.job.func)
+            #pdb.set_trace()
             results_dict[k] = self.job.func(**v, **self.job.params)
 
         job_dict['output'] = results_dict
         return job_dict
-        
-    def run_multi(self):
-        """Run jobs locally using mutliple cores"""
 
     def run_cluster(self):
         """Run jobs on a cluster environment (not yet implemented TODO TBA)"""

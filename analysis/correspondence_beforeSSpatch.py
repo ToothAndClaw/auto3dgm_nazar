@@ -11,7 +11,10 @@ from auto3dgm_nazar.jobrun import jobrun
 from auto3dgm_nazar.jobrun import job
 from auto3dgm_nazar.jobrun.jobrun import JobRun
 from auto3dgm_nazar.jobrun.job import Job
+import sys
+#!{sys.executable} -m pip install -f lap --user
 import lap
+
 
 class Correspondence:
     #params: self,
@@ -58,9 +61,14 @@ class Correspondence:
             if key[0] not in self.p_ret:
                 self.p_ret[key[0]] = {}
             self.p_ret[key[0]][key[1]] = self.results_dict[key]['p']
-            #print(self.results_dict[key]['p'],flush=True)
+
             self.r_ret[key[0]][key[1]] = self.results_dict[key]['r']
         self.pairwise_alignment = {'d': self.d_ret, 'r': self.r_ret, 'p': self.p_ret}    
+
+        print('+++++')
+        print(self.d_ret)
+        print(self.p_ret)
+        print(self.r_ret)
 
         if self.globalizeparam:
             self.mst_matrix = Correspondence.find_mst(self.d_ret)
@@ -108,8 +116,7 @@ class Correspondence:
 
     @staticmethod
     def dict_val_gen(first, second, initial_alignment=None):
-        newDict = {'mesh1': first, 'mesh2': second, 'initial_alignment': initial_alignment}
-        return newDict
+        return {'mesh1': first, 'mesh2': second, 'initial_alignment': initial_alignment}
 
     @staticmethod
     def has_pair(key1, key2, dictionary):
@@ -156,13 +163,13 @@ class Correspondence:
                 [dist, pat] = Correspondence.graphshortestpaths(tree+tree.transpose(), li, base)
                 P = identity(N, dtype=int)
                 R = np.identity(3)
-                #test = range(21)
                 for lj in range(1, len(pat)):
-                    #print(pa_p[pat[lj]][pat[lj-1]],flush=True)
-                    P = P @ Correspondence.permutation_flat_to_sparse(pa_p[pat[lj]][pat[lj-1]])
-                    R = pa_r[pat[lj], pat[lj-1]] @ R
-                #print(P,flush=True)
-                #print(test,flush=True)
+                    if pat[lj - 1] > pat[lj]:
+                        P = P @ Correspondence.permutation_flat_to_sparse(pa_p[pat[lj]][pat[lj-1]])
+                        R = pa_r[pat[lj], pat[lj-1]] @ R
+                    else:
+                        P = P @ Correspondence.permutation_flat_to_sparse(pa_p[pat[lj-1]][pat[lj]])
+                        R = pa_r[pat[lj-1], pat[lj]] @ R
                 retR[li] = R
                 retP[li] = P
         return {'r': retR, 'p': retP}               
@@ -176,7 +183,7 @@ class Correspondence:
             ret.append(tracer)
             tracer = ancestors[tracer]
         ret.append(reference)
-        #ret.reverse()
+        ret.reverse()
         return ret
 
     @staticmethod
@@ -195,31 +202,24 @@ class Correspondence:
     # params: mesh1, mesh2 meshes that have vertices that are 3 x n matrices
     #        mirror: a flag for whether or not mirror images of the shapes should be considered
     def principal_component_alignment(mesh1, mesh2, mirror):
-        mirror = 1
         X = mesh1.vertices.T
         Y = mesh2.vertices.T
-        #print(X)
-        #print(Y)
         UX, DX, VX = linalg.svd(X, full_matrices=False)
         UY, DY, VY = linalg.svd(Y, full_matrices=False)
-        #print(UX)
-        #print(UY)
-        #print(UX.T)
-        #print(UY.T)
         P=[]
         R=[]
 
-        P.append(np.array([1, 1, 1]))
-        P.append(np.array([1, -1, -1]))
-        P.append(np.array([-1, -1, 1]))
-        P.append(np.array([-1, 1, -1]))
+        P.append(np.diag([1, 1, 1]))
+        P.append(np.diag([-1, -1, 1]))
+        P.append(np.diag([1, -1, -1]))
+        P.append(np.diag([-1, 1, -1]))
         if (mirror == 1):
-            P.append(np.array([-1, 1, 1]))
-            P.append(np.array([1, -1, 1]))
-            P.append(np.array([1, 1, -1]))
-            P.append(np.array([-1, -1, -1]))
+            P.append(np.diag([-1, 1, 1]))
+            P.append(np.diag([1, -1, 1]))
+            P.append(np.diag([1, 1, -1]))
+            P.append(np.diag([-1, -1, -1]))
         for i in P:
-            R.append(np.dot(np.dot(UX, np.diag(i)), UY.T))
+            R.append(UX @ i @ UY.T)
         return R
 
     @staticmethod
@@ -232,11 +232,11 @@ class Correspondence:
         permutations = []
         min_cost = np.ones(len(R)) * np.inf
         for rot, i in zip(R, range(len(R))):
-            cost = distance_matrix(mesh1.vertices, np.dot(rot, mesh2.vertices.T).T)**2
+            cost = distance_matrix(mesh1.vertices, np.dot(rot, mesh2.vertices.T).T)
             # The hungarian algorithm:
-            # V1_ind, V2_ind = linear_sum_assignment(cost)
-            trash, V2_ind, garbage = lap.lapjv(cost)
-            min_cost[i] = trash
+            trash, V1_ind, V2_ind = lap.lapjv(cost)
+            #V1_ind, V2_ind = linear_sum_assignment(cost)
+            min_cost[i] = np.sqrt(np.sum(cost[V1_ind, V2_ind]))
             permutations.append(V2_ind)
 
         best_rot_ind = np.argmin(min_cost)
@@ -258,9 +258,8 @@ class Correspondence:
 
     @staticmethod
     def permutation_from_rotation(mesh1, mesh2, R):
-        cost = distance_matrix(mesh1.vertices, np.dot(R, mesh2.vertices.T).T)**2
-        trash, V2_ind, garbage = lap.lapjv(cost)
-        #V1_ind, V2_ind = linear_sum_assignment(cost)
+        cost = distance_matrix(mesh1.vertices, np.dot(R, mesh2.vertices.T).T)
+        V1_ind, V2_ind = linear_sum_assignment(cost)
         return V2_ind
 
     @staticmethod
@@ -277,50 +276,49 @@ class Correspondence:
             best_rot = R_0
             best_permutation = Correspondence.permutation_from_rotation(mesh1, mesh2, R_0)
 
-        
-        print(mesh1.name + ' to ' + mesh2.name)
-        #print(best_rot)
-        #print(best_permutation)
+        print(mesh1)
+        print(mesh2)
+        print(best_rot)
+        print(best_permutation)
 
         V1 = mesh1.vertices.T
         V2 = mesh2.vertices.T
-        #newV2 = np.dot(best_rot, V2)
-        newV2 = V2
+        newV2 = np.dot(best_rot.T, V2)
 
         i = 0
         while True:
-            newV2= V2[:,best_permutation]
-            err = V1 - np.dot(best_rot, newV2)
-            #print("after Hungary", np.linalg.norm(err))
-            
-            # Do Kabsch
-            cur_rot = Correspondence.Kabsch(V1.T, newV2.T)
-            #newV2 = np.dot(cur_rot, newV2)
-            err = V1 - np.dot(cur_rot, V2)
-            #print("after Kabsch", np.linalg.norm(err))
-            
+            newV2 = newV2[:, best_permutation]
+            #  Do Kabsch
+            cur_rot = Correspondence.Kabsch(newV2.T, V1.T)
+            newV2 = np.dot(cur_rot.T, newV2)
+            #print("after Kab cost = ", np.linalg.norm(V1 - newV2))
             # Do Hungary
-            cur_cost = distance_matrix(V1.T, np.dot(cur_rot, V2).T)**2
-            cur_trash, cur_permutation, garbage = lap.lapjv(cur_cost)
+            cur_cost = distance_matrix(V1.T, newV2.T)
             
-            #if i > max_iter or cur_trash - best_trash > 0 or ((abs(cur_trash - best_trash)<1e-5*best_trash)):
-            if np.linalg.norm(err) < 0.00000001 or i > max_iter or np.sum((cur_permutation - best_permutation) != 0) < 1:
+            trash, cur_V1_ind, cur_permutation = lap.lapjv(cur_cost)
+            #P = np.zeros((N, N))
+            #for i in range(N):
+            #    P[i, x[i]] = 1
+            #P = P.T
+            
+            # cur_V1_ind, cur_permutation = Hungary(cur_cost)
+            # print(cur_permutation)
+            #print("after Hungary cost = ", np.sqrt(np.sum(cur_cost[cur_V1_ind, cur_permutation] ** 2)))
+            if np.sum((cur_permutation - best_permutation) != 0) < 1 or i > max_iter:
                 break
             else:
-                if i % 1000 == 0:
-                    print(str(i) + " iterations",flush=True)
-                    # print("current iteration is:", i)
-                    # print("current error is: ", np.sqrt(cur_trash))
+                if i % 100 == 0:
+                    # print("Current error is: ", np.sum((cur_permutation - best_permutation) != 0))
+                    print("current iteration is:", i)
             # update
             best_permutation = cur_permutation
             best_rot = cur_rot
             i += 1
 
         #d = np.sum((cur_permutation - best_permutation))
-        d = np.sqrt(cur_trash)
+        d = np.sqrt(np.sum(cur_cost[cur_V1_ind, cur_permutation] ** 2))
         Rotate = best_rot
-        print(d)
-        Permutate = cur_permutation
+        Permutate = best_permutation
         gamma = 1.5 * Correspondence.ltwoinf(V1 - newV2)
 
         return {'d': d, 'r': Rotate, 'p': Permutate, 'g': gamma}
@@ -346,8 +344,15 @@ class Correspondence:
 
         # dot is matrix multiplication for array
         H = np.dot(AA.T, BB)
+
         U, S, Vt = linalg.svd(H)
-        R = np.dot(U, Vt)
+
+        R = np.dot(Vt.T, U.T)
+        # # special reflection case
+        # if linalg.det(R) < 0:
+        #     print("Reflection detected")
+        #     Vt[-1,:] *= -1
+        #     R = Vt.T * U.T
         return R
 
     @staticmethod
@@ -355,5 +360,4 @@ class Correspondence:
         n = len(mesh1.vertices)
         if not initial_alignment:
             initial_alignment = Correspondence.best_pairwise_PCA_alignment(mesh1=mesh1, mesh2=mesh2, mirror=mirror)
-        alignDict = Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=initial_alignment['r'], M_0=np.ones((n, n)), mirror=mirror)
-        return alignDict
+        return Correspondence.locgpd(mesh1=mesh1, mesh2=mesh2, R_0=initial_alignment['r'], M_0=np.ones((n, n)), mirror=mirror)

@@ -1,9 +1,11 @@
 from os.path import isfile, splitext
 from auto3dgm_nazar.mesh.mesh import Mesh
 from numpy import array, ndarray, concatenate, empty, full
-from vtk import vtkPLYReader,vtkOBJReader,vtkSTLReader,vtkPolyData, vtkPoints, vtkCellArray
-from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk, numpy_to_vtkIdTypeArray
+#from vtk import vtkPLYReader,vtkOBJReader,vtkSTLReader,vtkPolyData, vtkPoints, vtkCellArray
+#from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk, numpy_to_vtkIdTypeArray
+from tvtk.api import tvtk
 from warnings import warn
+import numpy as np
 
 
 class MeshFactory(object):
@@ -29,27 +31,27 @@ class MeshFactory(object):
 
         if isfile(file_path) and splitext(file_path)[1] in allowed_filetypes:
             if splitext(file_path)[1] == '.ply':
-                reader = vtkPLYReader()
+                reader = tvtk.PLYReader()
 
             elif splitext(file_path)[1] == '.obj':
-                reader = vtkOBJReader()
+                reader = tvtk.OBJReader()
 
             elif splitext(file_path)[1] == '.stl':
-                reader = vtkSTLReader()
+                reader = tvtk.STLReader()
             elif splitext(file_path)[1] == '.off':
                 (vertices, faces)=MeshFactory.off_parser(file_path)
                 namelist=file_path.split('/')
-                name=namelist[len(namelist)-1].split('.')[0]						 
+                name=namelist[len(namelist)-1].split('.')[0]
                 return MeshFactory.mesh_from_data(vertices, faces, name=name, center_scale=center_scale)
             namelist=file_path.split('/')
-            name=namelist[len(namelist)-1]
-            Name=name.split('\\')
-            name=Name[len(Name)-1].split('.')[0]
-            reader.SetFileName(file_path)
-            reader.Update()
+            name=namelist[len(namelist)-1].split('.')[0]
+            reader.file_name=file_path
+            #reader.SetFileName(file_path)
+            reader.update()
             
-            polydata = reader.GetOutput()
-            if isinstance(polydata, vtkPolyData):
+            polydata = reader.get_output()
+            if isinstance(polydata, tvtk.PolyData):
+                #polydata=tvtk.to_tvtk(polydata)
                 return Mesh(polydata, center_scale, name)
             else:
                 msg = 'VTK reader output type expected {}, but got {}'.format(
@@ -63,26 +65,38 @@ class MeshFactory(object):
     @staticmethod
     def mesh_from_data(vertices, faces=empty([0,0]), name=None, center_scale=False, deep=True):
         """Returns a VTK PolyData object from vertex and face ndarrays"""
-        vertices = array(vertices, dtype=float)
-        faces = array(faces, dtype='int64')
+        vertices = np.array(vertices)
+        numV = np.shape(vertices)[0]
+        if center_scale:
+            #print(vertices[0,:])
+            #print(np.mean(vertices,axis=0))
+            vertices = vertices-np.matlib.repmat(np.mean(vertices,axis=0),numV,1)
+            #print(vertices[0,:])
+            #print(np.mean(vertices,axis=0))
+            vertices = vertices/np.linalg.norm(vertices,'fro')
+        faces = array(faces, dtype=int)
+        vertices = array(vertices,dtype=float)
 
-        polydata = vtkPolyData()
+        polydata = tvtk.PolyData()
 
         # vertices
-        points = vtkPoints()
-        points.SetData(numpy_to_vtk(vertices, deep=deep))
-        polydata.SetPoints(points)
+        points = tvtk.Points()
+        points.from_array(vertices)
+        polydata.points=points
+        #points.SetData(numpy_to_vtk(vertices, deep=deep))
+        #polydata.SetPoints(points)
 
         # faces
-        if isinstance(faces, ndarray) and faces.ndim == 2 and faces.shape[1] == 3:
-            faces = concatenate((full([faces.shape[0], 1], 3), faces), axis=1)
-            cells = vtkCellArray()
-            nf = faces.shape[0]
-            vtk_id_array = numpy_to_vtkIdTypeArray(faces.ravel(), deep=deep)
-            cells.SetCells(nf, vtk_id_array)
-            polydata.SetPolys(cells)
-
-        return Mesh(vtk_mesh=polydata, center_scale=center_scale, name=name)
+        #if isinstance(faces, ndarray) and faces.ndim == 2 and faces.shape[1] == 3:
+            #faces = concatenate((full([faces.shape[0], 1], 3), faces), axis=1)
+            #polydata.polys=faces
+            #cells = tvtk.CellArray()
+            #nf = faces.shape[0]
+            #vtk_id_array = numpy_to_vtkIdTypeArray(faces.ravel(), deep=deep)
+            #cells.SetCells(nf, vtk_id_array)
+            #polydata.SetPolys(cells)
+        #polydata=tvtk.to_tvtk(polydata)
+        return Mesh(vtk_mesh=polydata, center_scale=False, name=name)
 
     @staticmethod
     def off_parser(file_path):
@@ -94,7 +108,7 @@ class MeshFactory(object):
             raise TypeError(msg)
         #Reading in the number of vertices, faces and edges, and pre-formatting their arrays
         (V,F,E)=map(int,file.readline().strip().split(' '))
-        vertices=empty([V,3])
+        vertices=empty([V,3], dtype=np.float32)
         faces=empty([F,3])
         # Read in the vertices
         for i in range(0,V):
@@ -112,4 +126,5 @@ class MeshFactory(object):
                 print("Warning: The .off file contains a face that is defined to be non-triangular. It is a valid triangle, reading it as a triangle.")
             faces[i]=line[1:4]
         #TODO Once the correct format for mesh_from_data face array is clarified, decide if faces should be transposed or not
-        return(vertices, faces)
+        vertices.astype(np.float32)
+        return(vertices, faces.T)

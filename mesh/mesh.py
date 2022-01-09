@@ -1,19 +1,23 @@
 import numpy as np
-from vtk.util.numpy_support import vtk_to_numpy # calling vtk_to_numpy doesn't work
-import vtk
+import pdb
+#from vtk.util.numpy_support import vtk_to_numpy # calling vtk_to_numpy doesn't work
+#import tvtk
+from tvtk.api import tvtk
 import math
+import vtk
 #import vtkCenterOfMass
 #from pdb import set_trace as bp
+import time
 
 class Mesh:
-    #params: self, and a VTK Object called vtk_mesh
+    #params: self, and a TVTK Object called vtk_mesh
     def __init__(self, vtk_mesh, center_scale=False, name=None):
         self.polydata = vtk_mesh
         self.name = name
         self.initial_centroid = self.centroid
+        self.koodinimi=vtk_mesh.points.to_array()
         self.initial_scale = self.scale
-        self.initial_vertices = self.vertices
-        
+
         if center_scale:
             self.center()
             self.scale_unit_norm()
@@ -22,11 +26,12 @@ class Mesh:
     attributes are now pointers and don't have to be updated, 2) can't be 
     overwritten arbitrarily but we could create a setter so that any 
     update goes into the polydata object '''
+
     @property 
     def vertices(self):
-        return vtk_to_numpy(self.polydata.GetPoints().GetData())
+        return self.koodinimi
 
-    @property
+    #@property
     def get_name(self):
         return self.name
 
@@ -34,13 +39,19 @@ class Mesh:
     coordinates and VTK does not make getting this easy '''
     @property
     def faces(self):
-        cell_n = self.polydata.GetNumberOfCells()
+        #cell_n = self.polydata.GetNumberOfCells()
+        #cell_n = len(self.polydata.polys.to_array())
+        cell_n = self.polydata.polys.get('number_of_cells')['number_of_cells']
         if cell_n:
-            point_n = self.polydata.GetCell(0).GetNumberOfPoints()
-            faces = np.zeros((cell_n, point_n), dtype=int)
+            point_n = int(len(self.polydata.polys.to_array())/cell_n)
+            faces = np.zeros((cell_n, point_n-1), dtype=int)
+            poly_array = self.polydata.polys.to_array()
             for i in range(cell_n):
                 for j in range(point_n):
-                    faces[i, j] = self.polydata.GetCell(i).GetPointId(j)
+                    if j==0:
+                        continue
+
+                    faces[i, j-1] = poly_array[point_n*i+j]
             return faces
         else:
             return np.empty([0,3])
@@ -48,15 +59,16 @@ class Mesh:
     @property
     def centroid(self):
         '''average of all vertices'''
-        center = vtk.vtkCenterOfMass()
-        center.SetInputData(self.polydata)
-        center.SetUseScalarsAsWeights(False)
-        center.Update()
-        return center.GetCenter()
+        center = tvtk.CenterOfMass()
+        center.set_input_data(self.polydata)
+        center.use_scalars_as_weights=False
+        center.update()
+        center.update_traits()
+        return center.center
 
     @property
     def scale(self):
-        return np.linalg.norm(vtk_to_numpy(self.polydata.GetPoints().GetData()), 'fro')
+        return np.linalg.norm(self.vertices, 'fro')
 
     def center(self):
         transform = vtk.vtkTransform()
@@ -68,14 +80,15 @@ class Mesh:
         self.polydata = transformt.GetOutput()
 
     def scale_unit_norm(self):
-        transform = vtk.vtkTransform()
+        transform = tvtk.Transform()
         scale_factor = 1.0/self.scale
-        transform.Scale(scale_factor, scale_factor, scale_factor)
-        transformt = vtk.vtkTransformPolyDataFilter()
-        transformt.SetInputData(self.polydata)
-        transformt.SetTransform(transform)
-        transformt.Update()
-        self.polydata = transformt.GetOutput()
+        transform.scale(scale_factor, scale_factor, scale_factor)
+        transformt = tvtk.TransformPolyDataFilter()
+        transformt.set_input_data(self.polydata)
+        transformt.transform=transform
+        transformt.update()
+        self.polydata = transformt.get_output()
+        self.koodinimi = self.polydata.points.to_array()
 
     def rotate(self, arr):
         temp = isValidRotation(arr)
@@ -95,18 +108,18 @@ class Mesh:
 
         rpy = np.array([x, y, z])
 
-        transform = vtk.vtkTransform()
-        transform.RotateX(x/math.pi*180)
-        transform.RotateY(y/math.pi*180)
-        transform.RotateZ(z/math.pi*180)
+        transform = tvtk.Transform()
+        transform.rotate_x(x/math.pi*180)
+        transform.rotate_y(y/math.pi*180)
+        transform.rotate_z(z/math.pi*180)
 
-        transformt = vtk.vtkTransformPolyDataFilter()
-        transformt.SetInputData(self.polydata)
-        transformt.SetTransform(transform)
-        transformt.Update()
+        transformt = tvtk.TransformPolyDataFilter()
+        transformt.set_input_data(self.polydata)
+        transformt.transform=transform
+        transformt.update()
 
-        self.polydata = transformt.GetOutput()
-        
+        self.polydata = transformt.get_output()
+        self.koodinimi = self.polydata.points.to_array()
         return self.polydata
 
     

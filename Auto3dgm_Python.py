@@ -386,6 +386,7 @@ class interface:
             aligned_mesh, _ = self.Centralize(aligned_mesh, scale=None)
             aligned_mesh.export(output_dir + name + '.ply')
             name = name.replace("_", "-")
+            aligned_mesh, _ = self.Centralize(aligned_mesh, scale=1)
             aligned_mesh.export(viewer_dir + name + '.obj')
 
 
@@ -426,7 +427,7 @@ class interface:
 
 
     # Taken from auto3dgm slicer code
-    def landmarksFromPseudoLandmarks(self, subsampledMeshes, permutations, rotations):
+    def landmarksFromPseudoLandmarks(self, subsampledMeshes, permutations, rotations,origScale=False):
         meshes = []
         for i in range(len(subsampledMeshes)):
             mesh = self.sampledMeshes[i]
@@ -437,20 +438,27 @@ class interface:
             lmtranspose = V.T @ perm
             #landmarks = scaledV
             landmarks = np.transpose(np.matmul(rot,lmtranspose))
-            mesh = auto3dgm_nazar.mesh.meshfactory.MeshFactory.mesh_from_data(vertices=landmarks,name=mesh.name, center_scale=False, deep=True)
-            meshes.append(mesh)
+            if not origScale:
+                mesh = auto3dgm_nazar.mesh.meshfactory.MeshFactory.mesh_from_data(vertices=landmarks,name=mesh.name, center_scale=False, deep=True)
+                meshes.append(mesh)
+            else:
+                mesh = auto3dgm_nazar.mesh.meshfactory.MeshFactory.mesh_from_data(vertices=landmarks,name=mesh.name, center_scale=True, deep=True)
+                meshes.append(mesh)
 
         return(meshes)
 
 
 
     def exportAlignedLandmarksNew(self, output):
-        exportFolder = output + "landmarks/"
+        exportFolder = output + "scaled_landmarks/"
+        unscaleOutput = output + "unscaled_landmarks/"
+        self.touch(unscaleOutput)
         self.touch(exportFolder)
         m = self.sampledMeshes
         r = self.alignData.globalized_alignment['r']
         p = self.alignData.globalized_alignment['p']
-        landmarks = self.landmarksFromPseudoLandmarks(m, p, r)
+        landmarks = self.landmarksFromPseudoLandmarks(m, p, r, origScale = False)
+        unscaledLandmarks = self.landmarksFromPseudoLandmarks(m,p,r,origScale = True)
 
         # Create Pandas Dataframe
         colNames = ["Name"]
@@ -470,9 +478,21 @@ class interface:
             dfLandmarks.loc[len(dfLandmarks)] = data
 
         # Save landmarks
-        dfLandmarks.to_csv(os.path.join(output, "landmarks.csv"), index=False)
+        dfLandmarks.to_csv(os.path.join(output, "landmarks_scaled.csv"), index=False)
+        
+        dfUnscaledLandmarks = pd.DataFrame(columns=colNames)
+        
+        for l in unscaledLandmarks:
+            self.saveNumpyArrayToFcsv(l.vertices, os.path.join(unscaleOutput, l.name))
+            data = [l.name]
+            verts = np.array(l.vertices)
+            data.extend(verts.flatten())
+            dfUnscaledLandmarks.loc[len(dfUnscaledLandmarks)] = data
+            
+        dfUnscaledLandmarks.to_csv(os.path.join(output, "landmarks_unscaled.csv"), index=False)
+        
         #Write morphologika
-        fid = open(os.path.join(output, "morphologika.txt"),"w")
+        fid = open(os.path.join(output, "morphologika_scaled.txt"),"w")
         
         fid.write("[Individuals]\n")
         fid.write(str(dfLandmarks.shape[0]) + "\n")
@@ -487,6 +507,28 @@ class interface:
         fid.write("[rawpoints]\n")
         
         for l in landmarks:
+            fid.write("\n")
+            fid.write("\'"+l.name+"\n")
+            fid.write("\n")
+            for i in range(l.vertices.shape[0]):
+                fid.write("{:.7e}".format(l.vertices[i,0])+ " " + "{:.7e}".format(l.vertices[i,1]) + " " + "{:.7e}".format(l.vertices[i,2],7) + "\n")
+        fid.close()
+        
+        fid = open(os.path.join(output, "morphologika_unscaled.txt"),"w")
+        
+        fid.write("[Individuals]\n")
+        fid.write(str(dfUnscaledLandmarks.shape[0]) + "\n")
+        fid.write("[Landmarks]\n")
+        fid.write(str(self.settings["num_subsample"][1])+"\n")
+        fid.write("[dimensions]\n")
+        fid.write("3\n")
+        fid.write("[names]\n")
+        for l in unscaledLandmarks:
+            fid.write(l.name+"\n")
+        fid.write("\n")
+        fid.write("[rawpoints]\n")
+        
+        for l in unscaledLandmarks:
             fid.write("\n")
             fid.write("\'"+l.name+"\n")
             fid.write("\n")
